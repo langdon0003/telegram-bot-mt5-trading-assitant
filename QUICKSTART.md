@@ -62,11 +62,13 @@ pytest tests/ -v
 Open **2 terminals**:
 
 ### Terminal 1: Start Telegram Bot
+
 ```bash
 python3 run_bot.py
 ```
 
 You should see:
+
 ```
 ✅ Loaded .env file
 🤖 Starting Telegram Trading Bot...
@@ -75,11 +77,13 @@ INFO - Bot started
 ```
 
 ### Terminal 2: Start Trade Engine Worker
+
 ```bash
 python3 run_worker.py
 ```
 
 You should see:
+
 ```
 ✅ Loaded .env file
 ⚙️  Trade Engine Worker Configuration:
@@ -100,6 +104,7 @@ python bot/telegram_bot.py
 ```
 
 You should see:
+
 ```
 2026-01-24 10:00:00 - __main__ - INFO - Bot started
 ```
@@ -114,11 +119,13 @@ You should see:
 ## Step 8: Configure Your Settings
 
 In Telegram, send:
+
 ```
 /start
 ```
 
 Then add your first setup:
+
 ```python
 # In Python shell or create a script:
 from database.db_manager import DatabaseManager
@@ -156,6 +163,7 @@ In Telegram:
 ```
 
 Follow the prompts:
+
 1. Symbol: `XAU` (or press Enter for default)
 2. Entry: `2000`
 3. Stop Loss: `1995` (must be < 2000 for BUY)
@@ -179,18 +187,23 @@ Or integrate into bot by uncommenting the MT5 execution code in `bot/telegram_bo
 ## Common Issues
 
 ### Issue: "Bot token invalid"
+
 **Solution**: Check `.env` file, ensure token is correct (no quotes, no spaces)
 
 ### Issue: "ModuleNotFoundError: No module named 'telegram'"
+
 **Solution**: `pip install python-telegram-bot`
 
 ### Issue: "No module named 'MetaTrader5'"
+
 **Solution**: `pip install MetaTrader5` (Windows only)
 
 ### Issue: "Database locked"
+
 **Solution**: Close any other connections to the database file
 
 ### Issue: "No setups configured"
+
 **Solution**: Add setups using the Python script in Step 8
 
 ## Next Steps
@@ -272,11 +285,13 @@ for trade in trades:
 ## Production Deployment
 
 ### 1. Use Environment Variables
+
 Never hardcode credentials. Always use `.env` file.
 
 ### 2. Run as Service (Linux/Windows)
 
 **Linux (systemd):**
+
 ```bash
 sudo nano /etc/systemd/system/telegram-trading-bot.service
 ```
@@ -305,6 +320,7 @@ sudo systemctl status telegram-trading-bot
 ```
 
 **Windows (Task Scheduler):**
+
 1. Open Task Scheduler
 2. Create Basic Task
 3. Trigger: At startup
@@ -316,6 +332,7 @@ sudo systemctl status telegram-trading-bot
 ### 3. Logging
 
 Add to bot code:
+
 ```python
 import logging
 logging.basicConfig(
@@ -374,6 +391,7 @@ ls -lh trading_bot.db
 You're now ready to use the Telegram MT5 Trading Assistant!
 
 Remember: This tool enforces discipline. Every trade requires:
+
 - ✅ Valid SL position
 - ✅ Emotion awareness
 - ✅ Setup selection

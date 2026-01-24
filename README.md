@@ -56,17 +56,20 @@ telegram-bot-mt5-trading-assitant/
 ## Installation
 
 1. **Clone repository:**
+
 ```bash
 git clone <repository-url>
 cd telegram-bot-mt5-trading-assitant
 ```
 
 2. **Install dependencies:**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 3. **Configure environment:**
+
 ```bash
 # Copy example config
 cp .env.example .env
@@ -76,6 +79,7 @@ nano .env
 ```
 
 4. **Initialize database:**
+
 ```bash
 python -c "from database.db_manager import DatabaseManager; db = DatabaseManager(); db.connect(); db.initialize_schema()"
 ```
@@ -83,21 +87,25 @@ python -c "from database.db_manager import DatabaseManager; db = DatabaseManager
 ## Quick Start
 
 ### Step 1: Start MetaTrader 5
+
 Open MT5 and login to your trading account.
 
 ### Step 2: Start Telegram Bot
+
 ```bash
 # Terminal 1
 python3 run_bot.py
 ```
 
 ### Step 3: Start Trade Engine Worker
+
 ```bash
 # Terminal 2
 python3 run_worker.py
 ```
 
 ### Step 4: Use Bot in Telegram
+
 1. Find your bot and send `/start`
 2. Use `/limitbuy` or `/limitsell` to place orders
 3. Bot will queue commands → Worker executes in MT5
@@ -107,12 +115,14 @@ python3 run_worker.py
 See [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) for complete guide in Vietnamese.
 
 ### Run Telegram Bot (Old Method)
+
 ```bash
 export BOT_TOKEN="your_token"
 python bot/telegram_bot.py
 ```
 
 ### Run Trade Engine Worker (Old Method)
+
 ```bash
 python engine/trade_engine_worker.py
 ```
@@ -143,6 +153,7 @@ python engine/trade_engine_worker.py
 ## User Configuration
 
 Per-user settings stored in database:
+
 - `default_symbol_base` (default: XAU)
 - `symbol_prefix` (e.g., "BROKER.")
 - `symbol_suffix` (e.g., "m", ".pro")
@@ -156,6 +167,7 @@ Per-user settings stored in database:
 Symbol = `prefix` + `base` + "USD" + `suffix`
 
 Examples:
+
 - base=XAU, prefix="", suffix="" → XAUUSD
 - base=XAU, prefix="BROKER.", suffix="m" → BROKER.XAUUSDm
 - base=EUR, prefix="", suffix=".a" → EURUSD.a
@@ -163,6 +175,7 @@ Examples:
 ## Risk & Volume Calculation
 
 Formula:
+
 ```
 Volume = Risk USD / (Stop Distance × Pip Value)
 ```
@@ -172,6 +185,7 @@ Then rounded to broker's volume step and enforced min/max limits.
 ## Database Schema
 
 ### Tables
+
 - `users` - Telegram users
 - `user_settings` - Per-user configuration
 - `accounts` - MT5 trading accounts
@@ -179,6 +193,7 @@ Then rounded to broker's volume step and enforced min/max limits.
 - `trades` - Complete trade journal
 
 ### Trades Table Fields
+
 - Trade parameters: symbol, order_type, entry, sl, tp, volume
 - Risk management: risk_usd, rr
 - Psychology: emotion, setup_code, chart_url
@@ -195,6 +210,7 @@ This project follows strict Test-Driven Development:
 4. ✅ No code without tests
 
 Run tests:
+
 ```bash
 pytest tests/ -v
 ```
