@@ -1,0 +1,348 @@
+"""
+MT5 Adapter - Trade Engine
+
+Receives trade commands from Bot and executes them in MetaTrader 5.
+Handles symbol resolution, volume calculation, and order placement.
+
+This is a SEPARATE process from the Telegram bot.
+"""
+
+import MetaTrader5 as mt5
+import logging
+from datetime import datetime
+from typing import Dict, Optional
+
+from engine.symbol_resolver import SymbolResolver
+from engine.risk_calculator import RiskCalculator
+from engine.trade_validator import TradeValidator
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class MT5Adapter:
+    """
+    Trade Engine that executes trades in MetaTrader 5.
+
+    Receives trade commands (JSON) from Telegram Bot.
+    Resolves symbol, validates, calculates volume, and places order.
+    """
+
+    def __init__(self):
+        self.symbol_resolver = SymbolResolver()
+        self.risk_calculator = RiskCalculator()
+        self.trade_validator = TradeValidator()
+        self.connected = False
+
+    def connect(self, login: int = None, password: str = None, server: str = None) -> bool:
+        """
+        Connect to MT5.
+
+        Args:
+            login: MT5 account number (optional if already logged in)
+            password: MT5 password
+            server: MT5 server
+
+        Returns:
+            True if connected, False otherwise
+        """
+        if not mt5.initialize():
+            logger.error(f"MT5 initialize failed: {mt5.last_error()}")
+            return False
+
+        if login and password and server:
+            authorized = mt5.login(login=login, password=password, server=server)
+            if not authorized:
+                logger.error(f"MT5 login failed: {mt5.last_error()}")
+                mt5.shutdown()
+                return False
+
+        self.connected = True
+        logger.info("MT5 connected successfully")
+        return True
+
+    def disconnect(self):
+        """Disconnect from MT5"""
+        mt5.shutdown()
+        self.connected = False
+        logger.info("MT5 disconnected")
+
+    def get_symbol_info(self, symbol: str) -> Optional[Dict]:
+        """
+        Get symbol information from MT5.
+
+        Args:
+            symbol: MT5 symbol (e.g., "XAUUSD")
+
+        Returns:
+            Dictionary with symbol info or None if not found
+        """
+        if not self.connected:
+            logger.error("Not connected to MT5")
+            return None
+
+        symbol_info = mt5.symbol_info(symbol)
+
+        if symbol_info is None:
+            logger.error(f"Symbol {symbol} not found")
+            return None
+
+        if not symbol_info.visible:
+            # Try to enable symbol in Market Watch
+            if not mt5.symbol_select(symbol, True):
+                logger.error(f"Failed to select symbol {symbol}")
+                return None
+
+        return {
+            'name': symbol_info.name,
+            'trade_contract_size': symbol_info.trade_contract_size,
+            'trade_tick_value': symbol_info.trade_tick_value,
+            'trade_tick_size': symbol_info.trade_tick_size,
+            'volume_min': symbol_info.volume_min,
+            'volume_max': symbol_info.volume_max,
+            'volume_step': symbol_info.volume_step,
+            'point': symbol_info.point,
+            'digits': symbol_info.digits,
+            'bid': symbol_info.bid,
+            'ask': symbol_info.ask
+        }
+
+    def calculate_pip_value(self, symbol_info: Dict) -> float:
+        """
+        Calculate pip value per lot.
+
+        Args:
+            symbol_info: Symbol information from get_symbol_info()
+
+        Returns:
+            Pip value in account currency per lot
+        """
+        # For most symbols: pip_value = tick_value / tick_size
+        tick_value = symbol_info['trade_tick_value']
+        tick_size = symbol_info['trade_tick_size']
+
+        pip_value = tick_value / tick_size
+
+        return pip_value
+
+    def place_limit_order(
+        self,
+        symbol: str,
+        order_type: str,
+        entry_price: float,
+        sl_price: float,
+        tp_price: float,
+        volume: float,
+        comment: str = ""
+    ) -> Optional[Dict]:
+        """
+        Place LIMIT order in MT5.
+
+        Args:
+            symbol: MT5 symbol
+            order_type: "LIMIT_BUY" or "LIMIT_SELL"
+            entry_price: Entry price
+            sl_price: Stop loss price
+            tp_price: Take profit price
+            volume: Volume in lots
+            comment: Order comment
+
+        Returns:
+            Order result dictionary or None if failed
+        """
+        if not self.connected:
+            logger.error("Not connected to MT5")
+            return None
+
+        # Map order type
+        if order_type == "LIMIT_BUY":
+            mt5_order_type = mt5.ORDER_TYPE_BUY_LIMIT
+        elif order_type == "LIMIT_SELL":
+            mt5_order_type = mt5.ORDER_TYPE_SELL_LIMIT
+        else:
+            logger.error(f"Invalid order type: {order_type}")
+            return None
+
+        # Build order request
+        request = {
+            "action": mt5.TRADE_ACTION_PENDING,
+            "symbol": symbol,
+            "volume": volume,
+            "type": mt5_order_type,
+            "price": entry_price,
+            "sl": sl_price,
+            "tp": tp_price,
+            "deviation": 0,
+            "magic": 123456,
+            "comment": comment,
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+
+        # Send order
+        result = mt5.order_send(request)
+
+        if result is None:
+            logger.error(f"Order send failed: {mt5.last_error()}")
+            return None
+
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            logger.error(f"Order failed: {result.retcode} - {result.comment}")
+            return None
+
+        logger.info(f"Order placed successfully: Ticket {result.order}")
+
+        return {
+            "ticket": result.order,
+            "volume": result.volume,
+            "price": result.price,
+            "retcode": result.retcode,
+            "comment": result.comment
+        }
+
+    def execute_trade_command(self, command: Dict) -> Dict:
+        """
+        Execute trade command received from Telegram Bot.
+
+        Args:
+            command: Trade command dictionary from TradeCommandBuilder
+
+        Returns:
+            Execution result dictionary
+        """
+        result = {
+            "success": False,
+            "error": None,
+            "ticket": None,
+            "execution_price": None
+        }
+
+        try:
+            # Get symbol info
+            symbol = command['symbol']
+            symbol_info = self.get_symbol_info(symbol)
+
+            if not symbol_info:
+                result["error"] = f"Symbol {symbol} not found in MT5"
+                return result
+
+            # Validate trade
+            validation = self.trade_validator.validate_trade(
+                order_type=command['order_type'],
+                entry_price=command['entry'],
+                sl_price=command['sl'],
+                tp_price=command['tp']
+            )
+
+            if not validation['is_valid']:
+                result["error"] = validation.get('error', 'Invalid trade parameters')
+                return result
+
+            # Recalculate volume with actual MT5 pip value
+            pip_value = self.calculate_pip_value(symbol_info)
+
+            volume = self.risk_calculator.calculate_volume(
+                risk_usd=command['risk_usd'],
+                entry_price=command['entry'],
+                sl_price=command['sl'],
+                pip_value=pip_value,
+                tick_size=symbol_info['trade_tick_size'],
+                volume_step=symbol_info['volume_step'],
+                min_volume=symbol_info['volume_min'],
+                max_volume=symbol_info['volume_max']
+            )
+
+            if volume is None:
+                result["error"] = "Failed to calculate volume"
+                return result
+
+            # Place order
+            order_comment = f"{command['emotion']}|{command['setup_code']}"
+
+            order_result = self.place_limit_order(
+                symbol=symbol,
+                order_type=command['order_type'],
+                entry_price=command['entry'],
+                sl_price=command['sl'],
+                tp_price=command['tp'],
+                volume=volume,
+                comment=order_comment
+            )
+
+            if order_result:
+                result["success"] = True
+                result["ticket"] = order_result['ticket']
+                result["execution_price"] = order_result['price']
+                result["volume"] = order_result['volume']
+            else:
+                result["error"] = "Order placement failed"
+
+        except Exception as e:
+            logger.exception("Trade execution error")
+            result["error"] = str(e)
+
+        return result
+
+    def get_account_info(self) -> Optional[Dict]:
+        """
+        Get MT5 account information.
+
+        Returns:
+            Account info dictionary
+        """
+        if not self.connected:
+            return None
+
+        account_info = mt5.account_info()
+
+        if account_info is None:
+            return None
+
+        return {
+            'login': account_info.login,
+            'balance': account_info.balance,
+            'equity': account_info.equity,
+            'margin': account_info.margin,
+            'margin_free': account_info.margin_free,
+            'margin_level': account_info.margin_level,
+            'profit': account_info.profit,
+            'currency': account_info.currency
+        }
+
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize adapter
+    adapter = MT5Adapter()
+
+    # Connect to MT5
+    connected = adapter.connect()
+
+    if connected:
+        # Get account info
+        account = adapter.get_account_info()
+        print(f"Account: {account}")
+
+        # Example trade command (from Telegram Bot)
+        trade_command = {
+            "user_id": 12345,
+            "account_id": 1,
+            "order_type": "LIMIT_BUY",
+            "symbol": "XAUUSD",
+            "entry": 2000.00,
+            "sl": 1995.00,
+            "tp": 2015.00,
+            "volume": 0.10,
+            "risk_usd": 50.00,
+            "emotion": "calm",
+            "setup_code": "FZ1",
+            "chart_url": None,
+            "created_at": datetime.utcnow().isoformat()
+        }
+
+        # Execute trade
+        result = adapter.execute_trade_command(trade_command)
+        print(f"Trade result: {result}")
+
+        # Disconnect
+        adapter.disconnect()
