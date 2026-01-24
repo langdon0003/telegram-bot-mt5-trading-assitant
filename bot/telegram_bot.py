@@ -142,7 +142,11 @@ class TradingBot:
         app.add_handler(limitsell_handler)
 
         logger.info("Bot started")
+        app.run_polling()
 
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /start command"""
+        telegram_id = update.effective_user.id
 
         # Get or create user
         user = self.db.get_user_by_telegram_id(telegram_id)
@@ -172,9 +176,9 @@ class TradingBot:
             "/setrisk - Configure risk settings\n"
             "/setrisktype - Configure risk type only\n"
             "/settings - View current settings\n\n"
-            "🔧 Queue Management:\n"
-            "/queue - Check pending commands\n"
-            "/clearqueue - Clear all pending commands\n\n"
+            "🔧 MT5 Connection:\n"
+            "/queue - Check MT5 connection status\n"
+            "/clearqueue - Reconnect to MT5\n\n"
             "/cancel - Cancel current operation"
         )
 
