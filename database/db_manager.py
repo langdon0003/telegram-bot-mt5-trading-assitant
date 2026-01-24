@@ -167,3 +167,44 @@ class DatabaseManager:
             values
         )
         self.conn.commit()
+
+    def update_trade_status(
+        self,
+        trade_id: int,
+        status: str,
+        mt5_ticket: int = None,
+        mt5_open_price: float = None,
+        mt5_open_time: str = None,
+        mt5_close_price: float = None,
+        mt5_close_time: str = None,
+        mt5_profit: float = None
+    ):
+        """
+        Update trade execution status.
+
+        Args:
+            trade_id: Trade ID
+            status: Trade status ('pending', 'filled', 'closed', 'cancelled', 'failed')
+            mt5_ticket: MT5 order ticket number
+            mt5_open_price: Actual MT5 open price
+            mt5_open_time: MT5 open timestamp
+            mt5_close_price: MT5 close price
+            mt5_close_time: MT5 close timestamp
+            mt5_profit: MT5 profit/loss
+        """
+        updates = {'status': status, 'updated_at': 'CURRENT_TIMESTAMP'}
+
+        if mt5_ticket is not None:
+            updates['mt5_ticket'] = mt5_ticket
+        if mt5_open_price is not None:
+            updates['mt5_open_price'] = mt5_open_price
+        if mt5_open_time is not None:
+            updates['mt5_open_time'] = mt5_open_time
+        if mt5_close_price is not None:
+            updates['mt5_close_price'] = mt5_close_price
+        if mt5_close_time is not None:
+            updates['mt5_close_time'] = mt5_close_time
+        if mt5_profit is not None:
+            updates['mt5_profit'] = mt5_profit
+
+        self.update_trade(trade_id, **updates)
