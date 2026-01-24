@@ -23,6 +23,13 @@ from bot.setup_commands import (
     get_editsetup_handler,
     get_deletesetup_handler
 )
+from bot.settings_commands import (
+    get_setsymbol_handler,
+    get_setrisk_handler,
+    get_setprefix_handler,
+    get_setsuffix_handler,
+    get_setrisktype_handler
+)
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
@@ -115,6 +122,13 @@ class TradingBot:
         app.add_handler(get_editsetup_handler())
         app.add_handler(get_deletesetup_handler())
 
+        # Settings management
+        app.add_handler(get_setsymbol_handler())
+        app.add_handler(get_setrisk_handler())
+        app.add_handler(get_setprefix_handler())
+        app.add_handler(get_setsuffix_handler())
+        app.add_handler(get_setrisktype_handler())
+
         # Trade handlers
         app.add_handler(limitbuy_handler)
         app.add_handler(limitsell_handler)
@@ -139,16 +153,21 @@ class TradingBot:
 
         await update.message.reply_text(
             "Welcome to MT5 Trading Assistant!\n\n"
-            "Trading:\n"
+            "📈 Trading:\n"
             "/limitbuy - Place LIMIT BUY order\n"
             "/limitsell - Place LIMIT SELL order\n\n"
-            "Setup Management:\n"
+            "📝 Setup Management:\n"
             "/addsetup - Add new trade setup\n"
             "/editsetup - Edit existing setup\n"
             "/deletesetup - Delete a setup\n"
             "/setups - View all setups\n\n"
-            "Configuration:\n"
-            "/settings - View your settings\n"
+            "⚙️ Configuration:\n"
+            "/setsymbol - Configure symbol settings\n"
+            "/setprefix - Configure prefix only\n"
+            "/setsuffix - Configure suffix only\n"
+            "/setrisk - Configure risk settings\n"
+            "/setrisktype - Configure risk type only\n"
+            "/settings - View current settings\n\n"
             "/cancel - Cancel current operation"
         )
 
