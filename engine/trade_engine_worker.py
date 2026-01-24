@@ -17,6 +17,7 @@ from typing import Optional
 
 from engine.command_queue import CommandQueue
 from engine.mt5_adapter import MT5Adapter
+from engine.notification_queue import NotificationQueue
 from database.db_manager import DatabaseManager
 
 # Setup logging
@@ -52,6 +53,7 @@ class TradeEngineWorker:
         self.queue = CommandQueue(queue_dir=queue_dir)
         self.adapter = MT5Adapter()
         self.db = DatabaseManager(db_path)
+        self.notification_queue = NotificationQueue()
         self.poll_interval = poll_interval
         self.running = False
 
@@ -133,6 +135,9 @@ class TradeEngineWorker:
             # Execute trade in MT5
             result = self.adapter.execute_trade_command(command)
 
+            # Get telegram_id for notification
+            telegram_id = command.get('telegram_id')
+
             # Update database
             if result['success']:
                 logger.info(
@@ -149,6 +154,25 @@ class TradeEngineWorker:
                         mt5_open_price=result.get('execution_price'),
                         mt5_open_time=datetime.utcnow().isoformat()
                     )
+
+                # Send success notification
+                if telegram_id and trade_id:
+                    self.notification_queue.enqueue(
+                        telegram_id=telegram_id,
+                        trade_id=trade_id,
+                        success=True,
+                        message=f"✅ Trade #{trade_id} executed successfully!\n\n"
+                                f"MT5 Ticket: {result['ticket']}\n"
+                                f"Symbol: {command.get('symbol')}\n"
+                                f"Type: {command.get('order_type')}\n"
+                                f"Entry: {command.get('entry_price')}\n"
+                                f"Volume: {result.get('volume', command.get('volume'))} lots",
+                        details={
+                            'ticket': result['ticket'],
+                            'execution_price': result.get('execution_price'),
+                            'volume': result.get('volume')
+                        }
+                    )
             else:
                 logger.error(
                     f"❌ Trade #{trade_id} failed - Error: {result['error']}"
@@ -159,6 +183,22 @@ class TradeEngineWorker:
                     self.db.update_trade_status(
                         trade_id=trade_id,
                         status='failed'
+                    )
+
+                # Send failure notification
+                if telegram_id and trade_id:
+                    self.notification_queue.enqueue(
+                        telegram_id=telegram_id,
+                        trade_id=trade_id,
+                        success=False,
+                        message=f"❌ Trade #{trade_id} failed\n\n"
+                                f"Error: {result['error']}\n\n"
+                                f"Symbol: {command.get('symbol')}\n"
+                                f"Type: {command.get('order_type')}\n"
+                                f"Entry: {command.get('entry_price')}",
+                        details={
+                            'error': result['error']
+                        }
                     )
 
             return result['success']

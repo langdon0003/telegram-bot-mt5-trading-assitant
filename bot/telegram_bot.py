@@ -35,6 +35,7 @@ from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
 from engine.command_queue import CommandQueue
+from engine.notification_queue import NotificationQueue
 from database.db_manager import DatabaseManager
 
 # Conversation states
@@ -78,10 +79,13 @@ class TradingBot:
         self.risk_calculator = RiskCalculator()
         self.command_builder = TradeCommandBuilder()
         self.command_queue = CommandQueue()
+        self.notification_queue = NotificationQueue()
+        self.app = None  # Will store Application instance
 
     def run(self):
         """Start the bot"""
         app = Application.builder().token(self.token).build()
+        self.app = app  # Store for notification polling
 
         # Conversation handler for /limitbuy
         limitbuy_handler = ConversationHandler(
@@ -139,6 +143,14 @@ class TradingBot:
         app.add_handler(limitsell_handler)
 
         logger.info("Bot started")
+
+        # Start notification polling
+        app.job_queue.run_repeating(
+            self.poll_notifications,
+            interval=2.0,  # Poll every 2 seconds
+            first=1.0
+        )
+
         app.run_polling()
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -240,7 +252,7 @@ class TradingBot:
             # Show first 5 pending commands
             preview = pending_ids[:5]
             preview_text = "\n".join([f"  • {qid}" for qid in preview])
-            
+
             more_text = ""
             if pending_count > 5:
                 more_text = f"\n  ... and {pending_count - 5} more"
@@ -590,6 +602,7 @@ class TradingBot:
 
         # Get account_id from user settings
         user_id = context.user_data['user_id']
+        telegram_id = context.user_data['telegram_id']
         settings = self.db.get_user_settings(user_id)
         account_id = settings['default_account_id'] or 1  # Fallback to 1 if not set
 
@@ -597,6 +610,7 @@ class TradingBot:
         command = self.command_builder.build_command(
             user_id=user_id,
             account_id=account_id,
+            telegram_id=telegram_id,
             order_type=context.user_data['order_type'],
             symbol=context.user_data['symbol'],
             entry_price=context.user_data['entry'],
@@ -652,6 +666,34 @@ class TradingBot:
         """Cancel conversation"""
         await update.message.reply_text("Operation cancelled")
         return ConversationHandler.END
+
+    async def poll_notifications(self, context: ContextTypes.DEFAULT_TYPE):
+        """Poll notification queue and send to users"""
+        try:
+            notifications = self.notification_queue.get_pending()
+            
+            for notif in notifications:
+                telegram_id = notif['telegram_id']
+                message = notif['message']
+                notification_id = notif['notification_id']
+                
+                try:
+                    # Send notification to user
+                    await context.bot.send_message(
+                        chat_id=telegram_id,
+                        text=message
+                    )
+                    
+                    # Mark as sent
+                    self.notification_queue.mark_sent(notification_id)
+                    logger.info(f"Notification sent to {telegram_id}: Trade #{notif['trade_id']}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to send notification {notification_id}: {e}")
+                    # Don't mark as sent, will retry next poll
+                    
+        except Exception as e:
+            logger.error(f"Error polling notifications: {e}")
 
 
 if __name__ == "__main__":

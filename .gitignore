@@ -33,6 +33,7 @@ ENV/
 
 # Command Queue
 queue/
+notifications/
 *.json
 
 # Environment variables

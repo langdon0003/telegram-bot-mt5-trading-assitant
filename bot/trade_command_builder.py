@@ -22,6 +22,7 @@ class TradeCommandBuilder:
         self,
         user_id: int,
         account_id: int,
+        telegram_id: int,
         order_type: str,
         symbol: str,
         entry_price: float,
@@ -37,8 +38,9 @@ class TradeCommandBuilder:
         Build trade command JSON.
 
         Args:
-            user_id: Telegram user ID
+            user_id: Database user ID
             account_id: MT5 account ID from database
+            telegram_id: Telegram user ID for notifications
             order_type: "LIMIT_BUY" or "LIMIT_SELL"
             symbol: MT5 symbol (e.g., "XAUUSD")
             entry_price: Entry price
@@ -76,6 +78,7 @@ class TradeCommandBuilder:
         command = {
             "user_id": user_id,
             "account_id": account_id,
+            "telegram_id": telegram_id,
             "order_type": order_type,
             "symbol": symbol,
             "entry": entry_price,
