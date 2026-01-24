@@ -112,7 +112,7 @@ class TestRiskCalculator:
         calculator = RiskCalculator()
 
         volume = calculator.calculate_volume(
-            risk_usd=15000.0,  # Very large risk
+            risk_usd=75000.0,  # Very large risk (75000 / (50 * 10) = 150 lots)
             entry_price=1.1000,
             sl_price=1.0950,
             pip_value=10.0,
