@@ -57,7 +57,43 @@ pytest tests/ -v
 # You should see: 42 passed
 ```
 
-## Step 6: Start the Bot
+## Step 6: Run the System
+
+Open **2 terminals**:
+
+### Terminal 1: Start Telegram Bot
+```bash
+python3 run_bot.py
+```
+
+You should see:
+```
+✅ Loaded .env file
+🤖 Starting Telegram Trading Bot...
+📊 Database: trading_bot.db
+INFO - Bot started
+```
+
+### Terminal 2: Start Trade Engine Worker
+```bash
+python3 run_worker.py
+```
+
+You should see:
+```
+✅ Loaded .env file
+⚙️  Trade Engine Worker Configuration:
+   Queue Directory: queue
+   Database: trading_bot.db
+============================================================
+Trade Engine Worker Starting
+============================================================
+INFO - Database connected
+INFO - Connected to MT5 - Account: 12345678, Balance: 10000.0 USD
+INFO - Worker started - Polling interval: 1.0s
+```
+
+**Important:** Make sure MetaTrader 5 is running and logged in before starting the worker!
 
 ```bash
 python bot/telegram_bot.py

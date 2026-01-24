@@ -55,28 +55,66 @@ telegram-bot-mt5-trading-assitant/
 
 ## Installation
 
-1. Install dependencies:
+1. **Clone repository:**
+```bash
+git clone <repository-url>
+cd telegram-bot-mt5-trading-assitant
+```
+
+2. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Initialize database:
+3. **Configure environment:**
+```bash
+# Copy example config
+cp .env.example .env
+
+# Edit .env and add your bot token
+nano .env
+```
+
+4. **Initialize database:**
 ```bash
 python -c "from database.db_manager import DatabaseManager; db = DatabaseManager(); db.connect(); db.initialize_schema()"
 ```
 
-3. Configure Telegram bot token in `bot/telegram_bot.py`
+## Quick Start
 
-## Usage
+### Step 1: Start MetaTrader 5
+Open MT5 and login to your trading account.
 
-### Run Telegram Bot
+### Step 2: Start Telegram Bot
 ```bash
+# Terminal 1
+python3 run_bot.py
+```
+
+### Step 3: Start Trade Engine Worker
+```bash
+# Terminal 2
+python3 run_worker.py
+```
+
+### Step 4: Use Bot in Telegram
+1. Find your bot and send `/start`
+2. Use `/limitbuy` or `/limitsell` to place orders
+3. Bot will queue commands → Worker executes in MT5
+
+## Detailed Usage
+
+See [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) for complete guide in Vietnamese.
+
+### Run Telegram Bot (Old Method)
+```bash
+export BOT_TOKEN="your_token"
 python bot/telegram_bot.py
 ```
 
-### Run Trade Engine (separate process)
+### Run Trade Engine Worker (Old Method)
 ```bash
-python engine/mt5_adapter.py
+python engine/trade_engine_worker.py
 ```
 
 ### Telegram Commands
