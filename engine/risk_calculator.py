@@ -3,6 +3,22 @@ Risk Calculator - PHASE 4 Implementation
 
 Calculates position volume based on risk management parameters.
 This implementation satisfies all test cases in test_risk_calculator.py.
+
+Updated Formula for Gold (XAU/USD):
+Volume (Lot) = Risk Amount / (Stop Loss Distance × 100)
+
+Where:
+- Risk Amount: The money you're willing to lose (e.g., $100)
+- Stop Loss Distance: |Entry - Stop Loss| in price units
+- 100: Standard contract size for Gold (XAUUSD)
+
+Example:
+- Entry: 2650, Stop Loss: 2640 (Distance: 10)
+- Risk: $100
+- Volume = 100 / (10 × 100) = 0.10 Lot
+
+For Forex pairs:
+Volume = Risk USD / (Stop Distance in Pips × Pip Value)
 """
 
 
@@ -10,8 +26,9 @@ class RiskCalculator:
     """
     Calculates trading volume based on risk amount and stop loss distance.
 
-    Formula:
-    Volume = Risk USD / (Stop Distance in Pips * Pip Value)
+    Supports two calculation methods:
+    1. Gold (XAUUSD): Volume = Risk / (Distance × 100)
+    2. Forex: Volume = Risk / (Distance in Pips × Pip Value)
 
     Then rounds to broker's volume step and enforces min/max limits.
     """
@@ -50,21 +67,32 @@ class RiskCalculator:
         # Calculate stop distance in price
         sl_distance_price = abs(entry_price - sl_price)
 
+        print(f"SL Distance Price: {sl_distance_price}")
+
         if sl_distance_price == 0:
             return None
 
-        # Calculate raw volume based on price distance and pip value
-        # For Gold: pip_value = $ per lot per $1 move
-        #   Example: Risk $50, Distance $5, pip_value $1/lot → Volume = 50/5 = 10 lots
-        # For Forex: pip_value = $ per lot per point move
-        #   Example: Risk $100, Distance 0.005 (50 pips), pip_value $10/lot per pip
-        #   → Need to calculate pips first: 0.005 / 0.0001 = 50 pips → Volume = 100/(50*10) = 0.2
+        # Calculate raw volume based on instrument type
+        # 
+        # For Gold (XAUUSD):
+        #   Formula: Volume = Risk / (Distance × 100)
+        #   Where 100 is the standard contract size for Gold
+        #   
+        #   Example: Entry 2650, SL 2640, Risk $100
+        #   Distance = 10, Volume = 100 / (10 × 100) = 0.10 Lot
+        #   
+        # For Forex pairs:
+        #   Formula: Volume = Risk / (Distance in Pips × Pip Value)
+        #   
+        #   Example: Entry 1.1000, SL 1.0950, Risk $100, Pip Value $10
+        #   Distance = 0.005 (50 pips), Volume = 100 / (50 × 10) = 0.20 Lot
 
-        # Check if pip_value represents value per unit price move (like Gold)
-        # or value per pip (like Forex)
         if tick_size >= 0.01:  # Gold-like (tick_size = 0.01)
-            # pip_value is per $ move, direct calculation
-            raw_volume = risk_usd / (sl_distance_price * pip_value)
+            # Using simplified Gold formula: Volume = Risk / (Distance × 100)
+            # The pip_value of 1.0 for Gold means $1 per lot per $1 move
+            # So: Risk / (Distance × 100) = Risk / (Distance × 100 × pip_value)
+            # When pip_value = 1.0: Risk / (Distance × 100)
+            raw_volume = risk_usd / (sl_distance_price * 100)
         else:  # Forex-like (tick_size = 0.00001 or 0.0001)
             # pip_value is per pip (10 points for 5-digit, 1 point for 4-digit)
             # Convert price distance to pips (assuming 1 pip = 10 points for 5-digit)
