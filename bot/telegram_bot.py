@@ -119,6 +119,8 @@ class TradingBot:
         app.add_handler(CommandHandler("start", self.start))
         app.add_handler(CommandHandler("settings", self.settings))
         app.add_handler(CommandHandler("setups", self.manage_setups))
+        app.add_handler(CommandHandler("queue", self.check_queue))
+        app.add_handler(CommandHandler("clearqueue", self.clear_queue))
 
         # Setup management
         app.add_handler(get_addsetup_handler())
@@ -171,6 +173,9 @@ class TradingBot:
             "/setrisk - Configure risk settings\n"
             "/setrisktype - Configure risk type only\n"
             "/settings - View current settings\n\n"
+            "🔧 Queue Management:\n"
+            "/queue - Check pending commands\n"
+            "/clearqueue - Clear all pending commands\n\n"
             "/cancel - Cancel current operation"
         )
 
@@ -212,6 +217,71 @@ class TradingBot:
             await update.message.reply_text(f"Your Setups:\n\n{setup_list}")
         else:
             await update.message.reply_text("No setups configured. Use /addsetup to create one.")
+
+    async def check_queue(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /queue command - Check pending commands in queue"""
+        telegram_id = update.effective_user.id
+        user = self.db.get_user_by_telegram_id(telegram_id)
+
+        if not user:
+            await update.message.reply_text("Please use /start first")
+            return
+
+        # Get queue statistics
+        pending_count = self.command_queue.get_pending_count()
+        pending_ids = self.command_queue.list_pending()
+
+        if pending_count == 0:
+            await update.message.reply_text(
+                "📭 Queue is empty\n\n"
+                "No pending trade commands."
+            )
+        else:
+            # Show first 5 pending commands
+            preview = pending_ids[:5]
+            preview_text = "\n".join([f"  • {qid}" for qid in preview])
+            
+            more_text = ""
+            if pending_count > 5:
+                more_text = f"\n  ... and {pending_count - 5} more"
+
+            await update.message.reply_text(
+                f"📬 Queue Status\n\n"
+                f"Pending Commands: {pending_count}\n\n"
+                f"Recent:\n{preview_text}{more_text}\n\n"
+                f"Use /clearqueue to clear all pending commands"
+            )
+
+    async def clear_queue(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /clearqueue command - Clear all pending commands"""
+        telegram_id = update.effective_user.id
+        user = self.db.get_user_by_telegram_id(telegram_id)
+
+        if not user:
+            await update.message.reply_text("Please use /start first")
+            return
+
+        # Check if queue has items
+        pending_count = self.command_queue.get_pending_count()
+
+        if pending_count == 0:
+            await update.message.reply_text("Queue is already empty.")
+            return
+
+        # Clear queue
+        try:
+            self.command_queue.clear_all()
+            await update.message.reply_text(
+                f"✅ Queue cleared!\n\n"
+                f"Deleted {pending_count} pending command(s)."
+            )
+            logger.warning(f"User {telegram_id} cleared queue - {pending_count} commands deleted")
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Error clearing queue: {str(e)}\n\n"
+                f"Please contact support."
+            )
+            logger.error(f"Failed to clear queue: {e}")
 
     # LIMIT BUY conversation flow
     async def limitbuy_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
