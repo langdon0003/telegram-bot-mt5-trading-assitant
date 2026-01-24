@@ -18,6 +18,11 @@ from telegram.ext import (
 )
 
 from bot.trade_command_builder import TradeCommandBuilder
+from bot.setup_commands import (
+    get_addsetup_handler,
+    get_editsetup_handler,
+    get_deletesetup_handler
+)
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
@@ -105,6 +110,11 @@ class TradingBot:
         app.add_handler(CommandHandler("settings", self.settings))
         app.add_handler(CommandHandler("setups", self.manage_setups))
 
+        # Setup management
+        app.add_handler(get_addsetup_handler())
+        app.add_handler(get_editsetup_handler())
+        app.add_handler(get_deletesetup_handler())
+
         # Trade handlers
         app.add_handler(limitbuy_handler)
         app.add_handler(limitsell_handler)
@@ -129,11 +139,16 @@ class TradingBot:
 
         await update.message.reply_text(
             "Welcome to MT5 Trading Assistant!\n\n"
-            "Commands:\n"
+            "Trading:\n"
             "/limitbuy - Place LIMIT BUY order\n"
-            "/limitsell - Place LIMIT SELL order\n"
-            "/settings - Configure your settings\n"
-            "/setups - Manage your trade setups\n"
+            "/limitsell - Place LIMIT SELL order\n\n"
+            "Setup Management:\n"
+            "/addsetup - Add new trade setup\n"
+            "/editsetup - Edit existing setup\n"
+            "/deletesetup - Delete a setup\n"
+            "/setups - View all setups\n\n"
+            "Configuration:\n"
+            "/settings - View your settings\n"
             "/cancel - Cancel current operation"
         )
 
