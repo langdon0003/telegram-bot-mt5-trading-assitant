@@ -260,7 +260,7 @@ class TradingBot:
 
     async def ask_entry(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Ask for entry price"""
-        symbol_base = update.message.text.strip() or "XAU"
+        symbol_base = update.message.text.strip().upper() or "XAU"
         context.user_data['symbol_base'] = symbol_base
 
         # Resolve symbol
