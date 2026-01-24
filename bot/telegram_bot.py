@@ -6,6 +6,7 @@ Uses python-telegram-bot ConversationHandler for state management.
 """
 
 import logging
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -33,6 +34,7 @@ from bot.settings_commands import (
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
+from engine.command_queue import CommandQueue
 from database.db_manager import DatabaseManager
 
 # Conversation states
@@ -75,6 +77,7 @@ class TradingBot:
         self.trade_validator = TradeValidator()
         self.risk_calculator = RiskCalculator()
         self.command_builder = TradeCommandBuilder()
+        self.command_queue = CommandQueue()
 
     def run(self):
         """Start the bot"""
@@ -515,10 +518,15 @@ class TradingBot:
             await query.edit_message_text("❌ Trade cancelled")
             return ConversationHandler.END
 
+        # Get account_id from user settings
+        user_id = context.user_data['user_id']
+        settings = self.db.get_user_settings(user_id)
+        account_id = settings['default_account_id'] or 1  # Fallback to 1 if not set
+
         # Build trade command
         command = self.command_builder.build_command(
-            user_id=context.user_data['user_id'],
-            account_id=1,  # TODO: Get from user settings
+            user_id=user_id,
+            account_id=account_id,
             order_type=context.user_data['order_type'],
             symbol=context.user_data['symbol'],
             entry_price=context.user_data['entry'],
@@ -531,12 +539,22 @@ class TradingBot:
             chart_url=context.user_data['chart_url']
         )
 
-        # TODO: Send command to Trade Engine via queue/API
+        # Send command to Trade Engine via queue
+        try:
+            queue_id = self.command_queue.enqueue(command)
+            logger.info(f"Command queued successfully: {queue_id}")
+        except Exception as e:
+            logger.error(f"Failed to queue command: {e}")
+            await query.edit_message_text(
+                f"❌ Error queuing trade command.\n"
+                f"Please try again or contact support."
+            )
+            return ConversationHandler.END
 
         # Save to database
         trade_id = self.db.create_trade(
-            user_id=context.user_data['user_id'],
-            account_id=1,
+            user_id=user_id,
+            account_id=account_id,
             symbol=context.user_data['symbol'],
             order_type=context.user_data['order_type'],
             entry=context.user_data['entry'],
@@ -567,8 +585,13 @@ class TradingBot:
 
 
 if __name__ == "__main__":
-    # TODO: Load from environment variable
-    BOT_TOKEN = "YOUR_BOT_TOKEN"
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+    if not BOT_TOKEN:
+        raise ValueError(
+            "BOT_TOKEN environment variable is not set.\n"
+            "Please set it using: export BOT_TOKEN='your_bot_token_here'"
+        )
 
     bot = TradingBot(token=BOT_TOKEN)
     bot.run()
