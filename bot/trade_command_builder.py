@@ -86,7 +86,7 @@ class TradeCommandBuilder:
             "emotion": emotion,
             "setup_code": setup_code,
             "chart_url": chart_url,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(datetime.UTC).isoformat()
         }
 
         return command
