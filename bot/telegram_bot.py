@@ -34,8 +34,7 @@ from bot.settings_commands import (
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
-from engine.command_queue import CommandQueue
-from engine.notification_queue import NotificationQueue
+from engine.mt5_adapter import MT5Adapter
 from database.db_manager import DatabaseManager
 
 # Conversation states
@@ -77,15 +76,15 @@ class TradingBot:
         self.symbol_resolver = SymbolResolver()
         self.trade_validator = TradeValidator()
         self.risk_calculator = RiskCalculator()
-        self.command_builder = TradeCommandBuilder()
-        self.command_queue = CommandQueue()
-        self.notification_queue = NotificationQueue()
-        self.app = None  # Will store Application instance
+        self.mt5_adapter = MT5Adapter()
+
+        # Connect to MT5 on initialization
+        if not self.mt5_adapter.connect():
+            logger.warning("MT5 connection failed on bot init. Will retry on trade execution.")
 
     def run(self):
         """Start the bot"""
         app = Application.builder().token(self.token).build()
-        self.app = app  # Store for notification polling
 
         # Conversation handler for /limitbuy
         limitbuy_handler = ConversationHandler(
@@ -144,18 +143,6 @@ class TradingBot:
 
         logger.info("Bot started")
 
-        # Start notification polling
-        app.job_queue.run_repeating(
-            self.poll_notifications,
-            interval=2.0,  # Poll every 2 seconds
-            first=1.0
-        )
-
-        app.run_polling()
-
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /start command"""
-        telegram_id = update.effective_user.id
 
         # Get or create user
         user = self.db.get_user_by_telegram_id(telegram_id)
@@ -231,7 +218,7 @@ class TradingBot:
             await update.message.reply_text("No setups configured. Use /addsetup to create one.")
 
     async def check_queue(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /queue command - Check pending commands in queue"""
+        """Handle /queue command - Check MT5 connection status"""
         telegram_id = update.effective_user.id
         user = self.db.get_user_by_telegram_id(telegram_id)
 
@@ -239,33 +226,25 @@ class TradingBot:
             await update.message.reply_text("Please use /start first")
             return
 
-        # Get queue statistics
-        pending_count = self.command_queue.get_pending_count()
-        pending_ids = self.command_queue.list_pending()
-
-        if pending_count == 0:
+        # Check MT5 connection
+        if self.mt5_adapter.connected:
+            account_info = self.mt5_adapter.get_account_info()
             await update.message.reply_text(
-                "📭 Queue is empty\n\n"
-                "No pending trade commands."
+                f"✅ MT5 Connected\n\n"
+                f"Account: {account_info['login']}\n"
+                f"Balance: ${account_info['balance']:.2f}\n"
+                f"Equity: ${account_info['equity']:.2f}\n"
+                f"Currency: {account_info['currency']}"
             )
         else:
-            # Show first 5 pending commands
-            preview = pending_ids[:5]
-            preview_text = "\n".join([f"  • {qid}" for qid in preview])
-
-            more_text = ""
-            if pending_count > 5:
-                more_text = f"\n  ... and {pending_count - 5} more"
-
             await update.message.reply_text(
-                f"📬 Queue Status\n\n"
-                f"Pending Commands: {pending_count}\n\n"
-                f"Recent:\n{preview_text}{more_text}\n\n"
-                f"Use /clearqueue to clear all pending commands"
+                "❌ MT5 Not Connected\n\n"
+                "Please ensure MetaTrader 5 is running and logged in,\n"
+                "then restart the bot."
             )
 
     async def clear_queue(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /clearqueue command - Clear all pending commands"""
+        """Handle /clearqueue command - Reconnect to MT5"""
         telegram_id = update.effective_user.id
         user = self.db.get_user_by_telegram_id(telegram_id)
 
@@ -273,28 +252,29 @@ class TradingBot:
             await update.message.reply_text("Please use /start first")
             return
 
-        # Check if queue has items
-        pending_count = self.command_queue.get_pending_count()
+        # Reconnect to MT5
+        await update.message.reply_text("🔄 Reconnecting to MT5...")
 
-        if pending_count == 0:
-            await update.message.reply_text("Queue is already empty.")
-            return
+        # Disconnect first
+        if self.mt5_adapter.connected:
+            self.mt5_adapter.disconnect()
 
-        # Clear queue
-        try:
-            self.command_queue.clear_all()
+        # Reconnect
+        if self.mt5_adapter.connect():
+            account_info = self.mt5_adapter.get_account_info()
             await update.message.reply_text(
-                f"✅ Queue cleared!\n\n"
-                f"Deleted {pending_count} pending command(s)."
+                f"✅ MT5 Reconnected!\n\n"
+                f"Account: {account_info['login']}\n"
+                f"Balance: ${account_info['balance']:.2f}"
             )
-            logger.warning(f"User {telegram_id} cleared queue - {pending_count} commands deleted")
-        except Exception as e:
+        else:
             await update.message.reply_text(
-                f"❌ Error clearing queue: {str(e)}\n\n"
-                f"Please contact support."
+                "❌ Failed to reconnect to MT5\n\n"
+                "Please check:\n"
+                "- MT5 is running\n"
+                "- You are logged in\n"
+                "- No firewall blocking"
             )
-            logger.error(f"Failed to clear queue: {e}")
-
     # LIMIT BUY conversation flow
     async def limitbuy_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Start LIMIT BUY conversation"""
@@ -606,36 +586,27 @@ class TradingBot:
         settings = self.db.get_user_settings(user_id)
         account_id = settings['default_account_id'] or 1  # Fallback to 1 if not set
 
+        # Show processing message
+        await query.edit_message_text("⏳ Executing trade in MT5...")
+
         # Build trade command
-        command = self.command_builder.build_command(
-            user_id=user_id,
-            account_id=account_id,
-            telegram_id=telegram_id,
-            order_type=context.user_data['order_type'],
-            symbol=context.user_data['symbol'],
-            entry_price=context.user_data['entry'],
-            sl_price=context.user_data['sl'],
-            tp_price=context.user_data['tp'],
-            volume=context.user_data['volume'],
-            risk_usd=context.user_data['risk_usd'],
-            emotion=context.user_data['emotion'],
-            setup_code=context.user_data['setup_code'],
-            chart_url=context.user_data['chart_url']
-        )
+        command = {
+            "user_id": user_id,
+            "account_id": account_id,
+            "telegram_id": telegram_id,
+            "order_type": context.user_data['order_type'],
+            "symbol": context.user_data['symbol'],
+            "entry": context.user_data['entry'],
+            "sl": context.user_data['sl'],
+            "tp": context.user_data['tp'],
+            "volume": context.user_data['volume'],
+            "risk_usd": context.user_data['risk_usd'],
+            "emotion": context.user_data['emotion'],
+            "setup_code": context.user_data['setup_code'],
+            "chart_url": context.user_data['chart_url']
+        }
 
-        # Send command to Trade Engine via queue
-        try:
-            queue_id = self.command_queue.enqueue(command)
-            logger.info(f"Command queued successfully: {queue_id}")
-        except Exception as e:
-            logger.error(f"Failed to queue command: {e}")
-            await query.edit_message_text(
-                f"❌ Error queuing trade command.\n"
-                f"Please try again or contact support."
-            )
-            return ConversationHandler.END
-
-        # Save to database
+        # Save to database first
         trade_id = self.db.create_trade(
             user_id=user_id,
             account_id=account_id,
@@ -652,13 +623,84 @@ class TradingBot:
             chart_url=context.user_data['chart_url']
         )
 
-        await query.edit_message_text(
-            f"✅ Trade command sent!\n\n"
-            f"Trade ID: {trade_id}\n"
-            f"Waiting for MT5 execution..."
-        )
+        # Execute trade in MT5 directly
+        try:
+            # Check MT5 connection
+            if not self.mt5_adapter.connected:
+                logger.warning("MT5 not connected, attempting to connect...")
+                if not self.mt5_adapter.connect():
+                    raise Exception("Failed to connect to MT5. Please ensure MT5 is running and logged in.")
 
-        logger.info(f"Trade command created: {command}")
+            # Execute trade
+            result = self.mt5_adapter.execute_trade_command(command)
+
+            if result['success']:
+                # Update database with success
+                self.db.update_trade_status(
+                    trade_id=trade_id,
+                    status='filled',
+                    mt5_ticket=result['ticket'],
+                    mt5_open_price=result.get('execution_price'),
+                    mt5_open_time=datetime.utcnow().isoformat()
+                )
+
+                # Send success message
+                await query.edit_message_text(
+                    f"✅ Trade #{trade_id} executed successfully!\n\n"
+                    f"MT5 Ticket: {result['ticket']}\n"
+                    f"Symbol: {context.user_data['symbol']}\n"
+                    f"Type: {context.user_data['order_type']}\n"
+                    f"Entry: {context.user_data['entry']}\n"
+                    f"SL: {context.user_data['sl']}\n"
+                    f"TP: {context.user_data['tp']}\n"
+                    f"Volume: {result.get('volume', context.user_data['volume'])} lots\n"
+                    f"Risk: ${context.user_data['risk_usd']}\n"
+                    f"R:R: {context.user_data['rr']}"
+                )
+
+                logger.info(f"Trade #{trade_id} executed successfully - Ticket: {result['ticket']}")
+
+            else:
+                # Update database with failure
+                self.db.update_trade_status(
+                    trade_id=trade_id,
+                    status='failed'
+                )
+
+                # Send failure message
+                await query.edit_message_text(
+                    f"❌ Trade #{trade_id} failed\n\n"
+                    f"Error: {result['error']}\n\n"
+                    f"Symbol: {context.user_data['symbol']}\n"
+                    f"Type: {context.user_data['order_type']}\n"
+                    f"Entry: {context.user_data['entry']}\n\n"
+                    f"Please check:\n"
+                    f"- Market is open\n"
+                    f"- Symbol exists in MT5\n"
+                    f"- Sufficient margin"
+                )
+
+                logger.error(f"Trade #{trade_id} failed - Error: {result['error']}")
+
+        except Exception as e:
+            # Update database with failure
+            self.db.update_trade_status(
+                trade_id=trade_id,
+                status='failed'
+            )
+
+            # Send error message
+            await query.edit_message_text(
+                f"❌ Trade #{trade_id} execution error\n\n"
+                f"Error: {str(e)}\n\n"
+                f"Please ensure:\n"
+                f"- MetaTrader 5 is running\n"
+                f"- You are logged in\n"
+                f"- Market is open\n\n"
+                f"Use /queue to check MT5 connection"
+            )
+
+            logger.exception(f"Error executing trade #{trade_id}")
 
         return ConversationHandler.END
 
