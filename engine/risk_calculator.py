@@ -72,15 +72,16 @@ class RiskCalculator:
             sl_distance_pips = sl_distance_price / pip_size
             raw_volume = risk_usd / (sl_distance_pips * pip_value)
 
+        # Enforce max volume BEFORE rounding (to handle very large risk amounts)
+        if raw_volume > max_volume:
+            return max_volume
+
         # Round down to volume step
         volume = self._round_to_step(raw_volume, volume_step)
 
-        # Enforce min/max limits
+        # Enforce min volume after rounding
         if volume < min_volume:
             volume = min_volume
-
-        if volume > max_volume:
-            volume = max_volume
 
         return volume
 
@@ -89,6 +90,10 @@ class RiskCalculator:
         Round value down to nearest step.
 
         Example: value=0.237, step=0.01 -> 0.23
+
+        Uses rounding to avoid floating point precision issues.
         """
         import math
+        # Round to 8 decimal places first to avoid floating point errors
+        value = round(value, 8)
         return math.floor(value / step) * step
