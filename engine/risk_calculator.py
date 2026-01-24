@@ -73,17 +73,17 @@ class RiskCalculator:
             return None
 
         # Calculate raw volume based on instrument type
-        # 
+        #
         # For Gold (XAUUSD):
         #   Formula: Volume = Risk / (Distance × 100)
         #   Where 100 is the standard contract size for Gold
-        #   
+        #
         #   Example: Entry 2650, SL 2640, Risk $100
         #   Distance = 10, Volume = 100 / (10 × 100) = 0.10 Lot
-        #   
+        #
         # For Forex pairs:
         #   Formula: Volume = Risk / (Distance in Pips × Pip Value)
-        #   
+        #
         #   Example: Entry 1.1000, SL 1.0950, Risk $100, Pip Value $10
         #   Distance = 0.005 (50 pips), Volume = 100 / (50 × 10) = 0.20 Lot
 
