@@ -5,7 +5,7 @@ Builds validated JSON trade commands to send from Bot to Trade Engine.
 This implementation satisfies all test cases in test_trade_command.py.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TradeCommandBuilder:
@@ -86,7 +86,7 @@ class TradeCommandBuilder:
             "emotion": emotion,
             "setup_code": setup_code,
             "chart_url": chart_url,
-            "created_at": datetime.now(datetime.UTC).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
 
         return command
