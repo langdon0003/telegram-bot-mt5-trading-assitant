@@ -47,15 +47,30 @@ class RiskCalculator:
         if risk_usd <= 0:
             return None
 
-        # Calculate stop distance
-        sl_distance = abs(entry_price - sl_price)
+        # Calculate stop distance in price
+        sl_distance_price = abs(entry_price - sl_price)
 
-        if sl_distance == 0:
+        if sl_distance_price == 0:
             return None
 
-        # Calculate raw volume
-        # Volume = Risk / (Distance * Pip Value)
-        raw_volume = risk_usd / (sl_distance * pip_value)
+        # Calculate raw volume based on price distance and pip value
+        # For Gold: pip_value = $ per lot per $1 move
+        #   Example: Risk $50, Distance $5, pip_value $1/lot → Volume = 50/5 = 10 lots
+        # For Forex: pip_value = $ per lot per point move
+        #   Example: Risk $100, Distance 0.005 (50 pips), pip_value $10/lot per pip
+        #   → Need to calculate pips first: 0.005 / 0.0001 = 50 pips → Volume = 100/(50*10) = 0.2
+
+        # Check if pip_value represents value per unit price move (like Gold)
+        # or value per pip (like Forex)
+        if tick_size >= 0.01:  # Gold-like (tick_size = 0.01)
+            # pip_value is per $ move, direct calculation
+            raw_volume = risk_usd / (sl_distance_price * pip_value)
+        else:  # Forex-like (tick_size = 0.00001 or 0.0001)
+            # pip_value is per pip (10 points for 5-digit, 1 point for 4-digit)
+            # Convert price distance to pips (assuming 1 pip = 10 points for 5-digit)
+            pip_size = 0.0001  # Standard pip size for forex
+            sl_distance_pips = sl_distance_price / pip_size
+            raw_volume = risk_usd / (sl_distance_pips * pip_value)
 
         # Round down to volume step
         volume = self._round_to_step(raw_volume, volume_step)
