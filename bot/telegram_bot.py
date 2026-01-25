@@ -162,20 +162,11 @@ class TradingBot:
         await update.message.reply_text(
             "Welcome to MT5 Trading Assistant!\n\n"
             "📈 Trading:\n"
-            "/limitbuy - Place LIMIT BUY order\n"
-            "/limitsell - Place LIMIT SELL order\n\n"
+            "/limitbuy - Place LIMIT BUY\n"
+            "/limitsell - Place LIMIT SELL\n\n"
             "📝 Setup Management:\n"
-            # "/addsetup - Add new trade setup\n"
-            # "/editsetup - Edit existing setup\n"
-            # "/deletesetup - Delete a setup\n"
-            "/setups - View all setups\n\n"
-            "⚙️ Configuration:\n"
-            # "/setsymbol - Configure symbol settings\n"
-            # "/setprefix - Configure prefix only\n"
-            # "/setsuffix - Configure suffix only\n"
-            # "/setrisk - Configure risk settings\n"
-            # "/setrisktype - Configure risk type only\n"
-            "/settings - View current settings\n\n"
+
+            "/setups - View all setups\n"            "/settings - View current settings\n\n"
             "🔧 MT5 Connection:\n"
             "/mt5connection - Check MT5 status\n"
             "/reconnectmt5 - Reconnect to MT5\n\n"
@@ -217,9 +208,9 @@ class TradingBot:
 
         if setups:
             setup_list = "\n".join([f"- {s['setup_code']}: {s['setup_name']}" for s in setups])
-            await update.message.reply_text(f"Your Setups:\n\n{setup_list}\n ""/addsetup - Add new trade setup\n"
-            "/editsetup - Edit existing setup\n"
-            "/deletesetup - Delete a setup\n")
+            await update.message.reply_text(f"Your Setups:\n\n{setup_list}\n\n""/addsetup - Add new\n"
+            "/editsetup - Edit existing\n"
+            "/deletesetup - Delete\n")
         else:
             await update.message.reply_text("No setups configured. Use /addsetup to create one.")
 
