@@ -165,19 +165,19 @@ class TradingBot:
             "/limitbuy - Place LIMIT BUY order\n"
             "/limitsell - Place LIMIT SELL order\n\n"
             "📝 Setup Management:\n"
-            "/addsetup - Add new trade setup\n"
-            "/editsetup - Edit existing setup\n"
-            "/deletesetup - Delete a setup\n"
+            # "/addsetup - Add new trade setup\n"
+            # "/editsetup - Edit existing setup\n"
+            # "/deletesetup - Delete a setup\n"
             "/setups - View all setups\n\n"
             "⚙️ Configuration:\n"
-            "/setsymbol - Configure symbol settings\n"
-            "/setprefix - Configure prefix only\n"
-            "/setsuffix - Configure suffix only\n"
-            "/setrisk - Configure risk settings\n"
-            "/setrisktype - Configure risk type only\n"
+            # "/setsymbol - Configure symbol settings\n"
+            # "/setprefix - Configure prefix only\n"
+            # "/setsuffix - Configure suffix only\n"
+            # "/setrisk - Configure risk settings\n"
+            # "/setrisktype - Configure risk type only\n"
             "/settings - View current settings\n\n"
             "🔧 MT5 Connection:\n"
-            "/mt5connection - Check MT5 connection status\n"
+            "/mt5connection - Check MT5 status\n"
             "/reconnectmt5 - Reconnect to MT5\n\n"
             "/cancel - Cancel current operation"
         )
@@ -201,7 +201,7 @@ class TradingBot:
                 f"Symbol Suffix: {settings['symbol_suffix'] or 'None'}\n"
                 f"Risk Type: {settings['risk_type']}\n"
                 f"Risk Value: {settings['risk_value']}\n\n"
-                f"Use /setsymbol, /setrisk to change settings"
+                f"Use /setsymbol, /setrisk /setsymbol /setprefix /setsuffix /setrisk /setrisktype to change settings"
             )
 
     async def manage_setups(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -217,7 +217,9 @@ class TradingBot:
 
         if setups:
             setup_list = "\n".join([f"- {s['setup_code']}: {s['setup_name']}" for s in setups])
-            await update.message.reply_text(f"Your Setups:\n\n{setup_list}")
+            await update.message.reply_text(f"Your Setups:\n\n{setup_list}\n ""/addsetup - Add new trade setup\n"
+            "/editsetup - Edit existing setup\n"
+            "/deletesetup - Delete a setup\n")
         else:
             await update.message.reply_text("No setups configured. Use /addsetup to create one.")
 
