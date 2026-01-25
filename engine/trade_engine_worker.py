@@ -94,7 +94,7 @@ class TradeEngineWorker:
 
         if not server:
             server = os.getenv("MT5_SERVER")
-
+        print(login, password, server)
         connected = self.adapter.connect(
             login=login,
             password=password,
