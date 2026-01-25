@@ -53,6 +53,9 @@ class MT5Adapter:
             return False
         print("Checking login credentials...")
         print(login, password, server)
+        login = os.getenv("MT5_LOGIN")
+        password = os.getenv("MT5_PASSWORD")
+        server = os.getenv("MT5_SERVER")
 
         if login and password and server:
             authorized = mt5.login(login=login, password=password, server=server)
