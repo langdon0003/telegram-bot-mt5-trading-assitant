@@ -122,8 +122,8 @@ class TradingBot:
         app.add_handler(CommandHandler("start", self.start))
         app.add_handler(CommandHandler("settings", self.settings))
         app.add_handler(CommandHandler("setups", self.manage_setups))
-        app.add_handler(CommandHandler("queue", self.check_queue))
-        app.add_handler(CommandHandler("clearqueue", self.clear_queue))
+        app.add_handler(CommandHandler("mt5connection", self.check_mt5_connection))
+        app.add_handler(CommandHandler("reconnectmt5", self.reconnect_mt5))
 
         # Setup management
         app.add_handler(get_addsetup_handler())
@@ -177,8 +177,8 @@ class TradingBot:
             "/setrisktype - Configure risk type only\n"
             "/settings - View current settings\n\n"
             "🔧 MT5 Connection:\n"
-            "/queue - Check MT5 connection status\n"
-            "/clearqueue - Reconnect to MT5\n\n"
+            "/mt5connection - Check MT5 connection status\n"
+            "/reconnectmt5 - Reconnect to MT5\n\n"
             "/cancel - Cancel current operation"
         )
 
@@ -221,8 +221,8 @@ class TradingBot:
         else:
             await update.message.reply_text("No setups configured. Use /addsetup to create one.")
 
-    async def check_queue(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /queue command - Check MT5 connection status"""
+    async def check_mt5_connection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /mt5connection command - Check MT5 connection status"""
         telegram_id = update.effective_user.id
         user = self.db.get_user_by_telegram_id(telegram_id)
 
@@ -247,8 +247,8 @@ class TradingBot:
                 "then restart the bot."
             )
 
-    async def clear_queue(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /clearqueue command - Reconnect to MT5"""
+    async def reconnect_mt5(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /reconnectmt5 command - Reconnect to MT5"""
         telegram_id = update.effective_user.id
         user = self.db.get_user_by_telegram_id(telegram_id)
 
