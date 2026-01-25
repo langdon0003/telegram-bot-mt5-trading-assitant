@@ -257,6 +257,7 @@ class TradingBot:
             self.mt5_adapter.disconnect()
 
         # Reconnect
+        print("Reconnecting MT5...")
         if self.mt5_adapter.connect():
             account_info = self.mt5_adapter.get_account_info()
             await update.message.reply_text(

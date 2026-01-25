@@ -9,6 +9,8 @@ This is a SEPARATE process from the Telegram bot.
 
 import MetaTrader5 as mt5
 import logging
+import os
+
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -34,7 +36,7 @@ class MT5Adapter:
         self.trade_validator = TradeValidator()
         self.connected = False
 
-    def connect(self, login: int = None, password: str = None, server: str = None) -> bool:
+    def connect(self, login: int = os.getenv("MT5_LOGIN"), password: str = os.getenv("MT5_PASSWORD"), server: str = os.getenv("MT5_SERVER")) -> bool:
         """
         Connect to MT5.
 
@@ -51,6 +53,7 @@ class MT5Adapter:
             return False
         print("Checking login credentials...")
         print(login, password, server)
+
         if login and password and server:
             authorized = mt5.login(login=login, password=password, server=server)
             if not authorized:
