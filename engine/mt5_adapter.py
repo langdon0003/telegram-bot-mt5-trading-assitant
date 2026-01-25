@@ -49,7 +49,8 @@ class MT5Adapter:
         if not mt5.initialize():
             logger.error(f"MT5 initialize failed: {mt5.last_error()}")
             return False
-
+        print("Checking login credentials...")
+        print(login, password, server)
         if login and password and server:
             authorized = mt5.login(login=login, password=password, server=server)
             if not authorized:
