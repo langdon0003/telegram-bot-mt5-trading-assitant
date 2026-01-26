@@ -36,14 +36,14 @@ class MT5Adapter:
         self.trade_validator = TradeValidator()
         self.connected = False
 
-    def connect(self, login: int = os.getenv("MT5_LOGIN"), password: str = os.getenv("MT5_PASSWORD"), server: str = os.getenv("MT5_SERVER")) -> bool:
+    def connect(self, login: int = None, password: str = None, server: str = None) -> bool:
         """
         Connect to MT5.
 
         Args:
-            login: MT5 account number (optional if already logged in)
-            password: MT5 password
-            server: MT5 server
+            login: MT5 account number (optional, reads from env if not provided)
+            password: MT5 password (optional, reads from env if not provided)
+            server: MT5 server (optional, reads from env if not provided)
 
         Returns:
             True if connected, False otherwise
@@ -51,18 +51,26 @@ class MT5Adapter:
         if not mt5.initialize():
             logger.error(f"MT5 initialize failed: {mt5.last_error()}")
             return False
-        print("Checking login credentials...")
-        print(login, password, server)
-        login = os.getenv("MT5_LOGIN")
-        password = os.getenv("MT5_PASSWORD")
-        server = os.getenv("MT5_SERVER")
+
+        # Read credentials from env if not provided
+        if login is None:
+            login = os.getenv("MT5_LOGIN")
+        if password is None:
+            password = os.getenv("MT5_PASSWORD")
+        if server is None:
+            server = os.getenv("MT5_SERVER")
+
+        logger.info(f"Connecting to MT5 with Login: {login}, Server: {server}")
 
         if login and password and server:
-            authorized = mt5.login(login=login, password=password, server=server)
+            authorized = mt5.login(login=int(login), password=password, server=server)
             if not authorized:
                 logger.error(f"MT5 login failed: {mt5.last_error()}")
                 mt5.shutdown()
                 return False
+            logger.info(f"✅ MT5 logged in successfully with account {login}")
+        else:
+            logger.info("⚠️  No credentials provided, using existing MT5 session")
 
         self.connected = True
         logger.info("MT5 connected successfully")

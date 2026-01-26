@@ -7,6 +7,7 @@ Uses python-telegram-bot ConversationHandler for state management.
 
 import logging
 import os
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -124,6 +125,7 @@ class TradingBot:
         app.add_handler(CommandHandler("setups", self.manage_setups))
         app.add_handler(CommandHandler("mt5connection", self.check_mt5_connection))
         app.add_handler(CommandHandler("reconnectmt5", self.reconnect_mt5))
+        app.add_handler(CommandHandler("changeaccount", self.change_account))
 
         # Setup management
         app.add_handler(get_addsetup_handler())
@@ -241,7 +243,7 @@ class TradingBot:
             )
 
     async def reconnect_mt5(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /reconnectmt5 command - Reconnect to MT5"""
+        """Handle /reconnectmt5 command - Reconnect to MT5 and reload credentials from .env"""
         telegram_id = update.effective_user.id
         user = self.db.get_user_by_telegram_id(telegram_id)
 
@@ -250,20 +252,28 @@ class TradingBot:
             return
 
         # Reconnect to MT5
-        await update.message.reply_text("🔄 Reconnecting to MT5...")
+        await update.message.reply_text("🔄 Reconnecting to MT5 and reloading credentials...")
+
+        # Reload environment variables from .env
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(override=True)  # Force reload
+            logger.info("Reloaded .env file")
+        except Exception as e:
+            logger.warning(f"Could not reload .env: {e}")
 
         # Disconnect first
         if self.mt5_adapter.connected:
             self.mt5_adapter.disconnect()
 
-        # Reconnect
-        print("Reconnecting MT5...")
+        # Reconnect with new credentials from env
         if self.mt5_adapter.connect():
             account_info = self.mt5_adapter.get_account_info()
             await update.message.reply_text(
                 f"✅ MT5 Reconnected!\n\n"
                 f"Account: {account_info['login']}\n"
-                f"Balance: ${account_info['balance']:.2f}"
+                f"Balance: ${account_info['balance']:.2f}\n"
+                f"Currency: {account_info['currency']}"
             )
         else:
             await update.message.reply_text(
@@ -273,6 +283,68 @@ class TradingBot:
                 "- You are logged in\n"
                 "- No firewall blocking"
             )
+
+    async def change_account(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /changeaccount command - Change MT5 account with custom credentials"""
+        telegram_id = update.effective_user.id
+        user = self.db.get_user_by_telegram_id(telegram_id)
+
+        if not user:
+            await update.message.reply_text("Please use /start first")
+            return
+
+        # Parse command: /changeaccount login password server
+        args = context.args
+
+        if len(args) < 3:
+            await update.message.reply_text(
+                "ℹ️ Cách dùng:\n\n"
+                "/changeaccount <login> <password> <server>\n\n"
+                "Ví dụ:\n"
+                "/changeaccount 12345678 mypassword Broker-Server\n\n"
+                "⚠️ Lưu ý: Lệnh sẽ bị xóa sau 5 giây để bảo mật password!"
+            )
+            return
+
+        login = args[0]
+        password = args[1]
+        server = " ".join(args[2:])  # Server name might have spaces
+
+        # Delete the message immediately for security
+        try:
+            await update.message.delete()
+        except:
+            pass
+
+        # Send temporary processing message
+        msg = await update.effective_chat.send_message("🔄 Đang đổi account MT5...")
+
+        # Disconnect current connection
+        if self.mt5_adapter.connected:
+            self.mt5_adapter.disconnect()
+
+        # Connect with new credentials
+        if self.mt5_adapter.connect(login=int(login), password=password, server=server):
+            account_info = self.mt5_adapter.get_account_info()
+            await msg.edit_text(
+                f"✅ Đã đổi account MT5!\n\n"
+                f"Account: {account_info['login']}\n"
+                f"Balance: ${account_info['balance']:.2f}\n"
+                f"Currency: {account_info['currency']}\n\n"
+                f"⚠️ Lưu ý: Credentials này chỉ tồn tại trong phiên hiện tại.\n"
+                f"Để lưu vĩnh viễn, cập nhật file .env và dùng /reconnectmt5"
+            )
+        else:
+            await msg.edit_text(
+                f"❌ Không thể kết nối MT5!\n\n"
+                f"Login: {login}\n"
+                f"Server: {server}\n\n"
+                f"Vui lòng kiểm tra:\n"
+                f"- MT5 đang chạy\n"
+                f"- Login, password, server đúng\n"
+                f"- Kết nối internet"
+            )
+
     # LIMIT BUY conversation flow
     async def limitbuy_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Start LIMIT BUY conversation"""
