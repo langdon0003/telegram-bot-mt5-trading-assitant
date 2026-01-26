@@ -31,11 +31,6 @@ ENV/
 *.sqlite
 *.sqlite3
 
-# Command Queue
-queue/
-notifications/
-*.json
-
 # Environment variables
 .env
 

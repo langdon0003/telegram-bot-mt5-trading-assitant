@@ -57,11 +57,9 @@ pytest tests/ -v
 # You should see: 42 passed
 ```
 
-## Step 6: Run the System
+## Step 6: Run the Bot
 
-Open **2 terminals**:
-
-### Terminal 1: Start Telegram Bot
+**Important:** Make sure MetaTrader 5 is running and logged in first!
 
 ```bash
 python3 run_bot.py
@@ -74,39 +72,7 @@ You should see:
 🤖 Starting Telegram Trading Bot...
 📊 Database: trading_bot.db
 INFO - Bot started
-```
-
-### Terminal 2: Start Trade Engine Worker
-
-```bash
-python3 run_worker.py
-```
-
-You should see:
-
-```
-✅ Loaded .env file
-⚙️  Trade Engine Worker Configuration:
-   Queue Directory: queue
-   Database: trading_bot.db
-============================================================
-Trade Engine Worker Starting
-============================================================
-INFO - Database connected
-INFO - Connected to MT5 - Account: 12345678, Balance: 10000.0 USD
-INFO - Worker started - Polling interval: 1.0s
-```
-
-**Important:** Make sure MetaTrader 5 is running and logged in before starting the worker!
-
-```bash
-python bot/telegram_bot.py
-```
-
-You should see:
-
-```
-2026-01-24 10:00:00 - __main__ - INFO - Bot started
+INFO - MT5 connected successfully
 ```
 
 ## Step 7: Test in Telegram
@@ -173,16 +139,13 @@ Follow the prompts:
 7. Chart URL: Paste TradingView URL or type `skip`
 8. Confirm: Click "✅ Confirm"
 
-## Step 10: Connect MT5 (For Actual Execution)
+## Step 10: Verify MT5 Connection
 
-The bot creates trade records, but to execute in MT5:
+The bot executes trades directly in MT5. To test connection:
 
 ```bash
-# In a separate terminal
-python engine/mt5_adapter.py
+python test_mt5_connection.py
 ```
-
-Or integrate into bot by uncommenting the MT5 execution code in `bot/telegram_bot.py`.
 
 ## Common Issues
 

@@ -5,16 +5,17 @@ Production-grade Telegram bot for manual trading into MetaTrader 5.
 ## Architecture
 
 ```
-┌─────────────────┐         ┌─────────────────┐
-│  Telegram Bot   │         │  Trade Engine   │
-│  (Python)       │────────▶│  (MT5 Adapter)  │
-│                 │  JSON   │                 │
-│  - Conversation │         │  - MT5 API      │
-│  - Validation   │         │  - Execution    │
-│  - Risk Calc    │         │  - Risk Calc    │
-└─────────────────┘         └─────────────────┘
-        │                            │
-        ▼                            ▼
+┌─────────────────┐
+│  Telegram Bot   │
+│  (Python)       │
+│                 │
+│  - Conversation │
+│  - Validation   │
+│  - Risk Calc    │
+│  - MT5 Direct   │
+└─────────────────┘
+        │
+        ▼
 ┌─────────────────────────────────────────────┐
 │           SQLite Database                   │
 │  - Users, Settings, Setups, Trades         │
@@ -93,39 +94,18 @@ Open MT5 and login to your trading account.
 ### Step 2: Start Telegram Bot
 
 ```bash
-# Terminal 1
 python3 run_bot.py
 ```
 
-### Step 3: Start Trade Engine Worker
-
-```bash
-# Terminal 2
-python3 run_worker.py
-```
-
-### Step 4: Use Bot in Telegram
+### Step 3: Use Bot in Telegram
 
 1. Find your bot and send `/start`
 2. Use `/limitbuy` or `/limitsell` to place orders
-3. Bot will queue commands → Worker executes in MT5
+3. Bot executes trades directly in MT5
 
 ## Detailed Usage
 
 See [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) for complete guide in Vietnamese.
-
-### Run Telegram Bot (Old Method)
-
-```bash
-export BOT_TOKEN="your_token"
-python bot/telegram_bot.py
-```
-
-### Run Trade Engine Worker (Old Method)
-
-```bash
-python engine/trade_engine_worker.py
-```
 
 ### Telegram Commands
 
@@ -224,8 +204,6 @@ pytest tests/ -v
 
 ## Future Enhancements
 
-- [ ] Queue system between Bot and Trade Engine (Redis/RabbitMQ)
-- [ ] REST API for Trade Engine
 - [ ] Web dashboard for trade analytics
 - [ ] Multi-account support
 - [ ] Trade modification commands

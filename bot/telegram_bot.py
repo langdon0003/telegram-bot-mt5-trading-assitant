@@ -767,7 +767,7 @@ class TradingBot:
                 f"- MetaTrader 5 is running\n"
                 f"- You are logged in\n"
                 f"- Market is open\n\n"
-                f"Use /queue to check MT5 connection"
+                f"Use /settings to check configuration"
             )
 
             logger.exception(f"Error executing trade #{trade_id}")
@@ -779,33 +779,6 @@ class TradingBot:
         await update.message.reply_text("Operation cancelled")
         return ConversationHandler.END
 
-    async def poll_notifications(self, context: ContextTypes.DEFAULT_TYPE):
-        """Poll notification queue and send to users"""
-        try:
-            notifications = self.notification_queue.get_pending()
-
-            for notif in notifications:
-                telegram_id = notif['telegram_id']
-                message = notif['message']
-                notification_id = notif['notification_id']
-
-                try:
-                    # Send notification to user
-                    await context.bot.send_message(
-                        chat_id=telegram_id,
-                        text=message
-                    )
-
-                    # Mark as sent
-                    self.notification_queue.mark_sent(notification_id)
-                    logger.info(f"Notification sent to {telegram_id}: Trade #{notif['trade_id']}")
-
-                except Exception as e:
-                    logger.error(f"Failed to send notification {notification_id}: {e}")
-                    # Don't mark as sent, will retry next poll
-
-        except Exception as e:
-            logger.error(f"Error polling notifications: {e}")
 
 
 if __name__ == "__main__":
