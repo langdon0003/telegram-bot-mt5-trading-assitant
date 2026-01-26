@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script kiểm tra kết nối MT5 
+Script kiểm tra kết nối MT5
 Chạy để debug vấn đề IPC timeout
 """
 
@@ -68,7 +68,7 @@ print(f"   Password: {'***' if password else 'NOT SET'}")
 if login and password and server:
     print("\n5. Thử login vào MT5...")
     authorized = mt5.login(login=int(login), password=password, server=server)
-    
+
     if not authorized:
         error = mt5.last_error()
         print(f"   ✗ Login FAILED: {error}")
@@ -82,7 +82,7 @@ if login and password and server:
         print("5. Internet có kết nối không?")
         mt5.shutdown()
         exit(1)
-    
+
     print("   ✓ Login OK")
 else:
     print("\n5. Không có credentials, dùng session hiện tại")
