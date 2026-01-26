@@ -48,10 +48,19 @@ class MT5Adapter:
         Returns:
             True if connected, False otherwise
         """
+        # Always shutdown first to avoid IPC timeout errors
+        # This ensures clean reconnection
+        try:
+            mt5.shutdown()
+            logger.info("MT5 shutdown completed before reconnect")
+        except:
+            pass  # Ignore if already shutdown
+        
+        # Initialize MT5 connection
         if not mt5.initialize():
             logger.error(f"MT5 initialize failed: {mt5.last_error()}")
             return False
-
+        
         # Read credentials from env if not provided
         if login is None:
             login = os.getenv("MT5_LOGIN")
@@ -59,25 +68,14 @@ class MT5Adapter:
             password = os.getenv("MT5_PASSWORD")
         if server is None:
             server = os.getenv("MT5_SERVER")
-
+        
         logger.info(f"Connecting to MT5 with Login: {login}, Server: {server}")
 
         if login and password and server:
             authorized = mt5.login(login=int(login), password=password, server=server)
             if not authorized:
-                logger.error(f"MT5 login failed: {mt5.last_error()}")
-                mt5.shutdown()
-                return False
-            logger.info(f"✅ MT5 logged in successfully with account {login}")
-        else:
-            logger.info("⚠️  No credentials provided, using existing MT5 session")
-
-        self.connected = True
-        logger.info("MT5 connected successfully")
-        return True
-
-    def disconnect(self):
-        """Disconnect from MT5"""
+                error_code, error_msg = mt5.last_error()
+                logger.error(f"MT5 login failed: ({error_code}) {error_msg}")
         mt5.shutdown()
         self.connected = False
         logger.info("MT5 disconnected")
