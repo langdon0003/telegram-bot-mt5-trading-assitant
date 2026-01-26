@@ -76,6 +76,18 @@ class MT5Adapter:
             if not authorized:
                 error_code, error_msg = mt5.last_error()
                 logger.error(f"MT5 login failed: ({error_code}) {error_msg}")
+                mt5.shutdown()
+                return False
+            logger.info(f"✅ MT5 logged in successfully with account {login}")
+        else:
+            logger.info("⚠️  No credentials provided, using existing MT5 session")
+
+        self.connected = True
+        logger.info("MT5 connected successfully")
+        return True
+
+    def disconnect(self):
+        """Disconnect from MT5"""
         mt5.shutdown()
         self.connected = False
         logger.info("MT5 disconnected")
