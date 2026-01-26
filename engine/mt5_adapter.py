@@ -55,12 +55,12 @@ class MT5Adapter:
             logger.info("MT5 shutdown completed before reconnect")
         except:
             pass  # Ignore if already shutdown
-        
+
         # Initialize MT5 connection
         if not mt5.initialize():
             logger.error(f"MT5 initialize failed: {mt5.last_error()}")
             return False
-        
+
         # Read credentials from env if not provided
         if login is None:
             login = os.getenv("MT5_LOGIN")
@@ -68,7 +68,7 @@ class MT5Adapter:
             password = os.getenv("MT5_PASSWORD")
         if server is None:
             server = os.getenv("MT5_SERVER")
-        
+
         logger.info(f"Connecting to MT5 with Login: {login}, Server: {server}")
 
         if login and password and server:
