@@ -36,7 +36,7 @@ class MT5Adapter:
         self.trade_validator = TradeValidator()
         self.connected = False
 
-    def connect(self, login: int = None, password: str = None, server: str = None) -> bool:
+    def connect(self, login: int = None, password: str = None, server: str = None, force_reconnect: bool = False) -> bool:
         """
         Connect to MT5.
 
@@ -44,23 +44,11 @@ class MT5Adapter:
             login: MT5 account number (optional, reads from env if not provided)
             password: MT5 password (optional, reads from env if not provided)
             server: MT5 server (optional, reads from env if not provided)
+            force_reconnect: Force shutdown and reconnect even if already connected
 
         Returns:
             True if connected, False otherwise
         """
-        # Always shutdown first to avoid IPC timeout errors
-        # This ensures clean reconnection
-        try:
-            mt5.shutdown()
-            logger.info("MT5 shutdown completed before reconnect")
-        except:
-            pass  # Ignore if already shutdown
-
-        # Initialize MT5 connection
-        if not mt5.initialize():
-            logger.error(f"MT5 initialize failed: {mt5.last_error()}")
-            return False
-
         # Read credentials from env if not provided
         if login is None:
             login = os.getenv("MT5_LOGIN")
@@ -68,6 +56,40 @@ class MT5Adapter:
             password = os.getenv("MT5_PASSWORD")
         if server is None:
             server = os.getenv("MT5_SERVER")
+
+        # Check if already connected to the same account
+        if not force_reconnect:
+            try:
+                account_info = mt5.account_info()
+                if account_info is not None:
+                    # Already connected
+                    if login is None or int(login) == account_info.login:
+                        logger.info(f"✅ Already connected to MT5 account {account_info.login}")
+                        self.connected = True
+                        return True
+                    else:
+                        # Connected but to different account, need to switch
+                        logger.info(f"Switching from account {account_info.login} to {login}")
+                        force_reconnect = True
+            except:
+                # Not connected or error, proceed with connection
+                pass
+
+        # Shutdown if force_reconnect or connection check failed
+        if force_reconnect:
+            try:
+                mt5.shutdown()
+                logger.info("MT5 shutdown completed before reconnect")
+                import time
+                time.sleep(1)  # Wait 1 second after shutdown
+            except Exception as e:
+                logger.warning(f"Shutdown warning: {e}")
+
+        # Initialize MT5 connection
+        if not mt5.initialize():
+            error = mt5.last_error()
+            logger.error(f"MT5 initialize failed: {error}")
+            return False
 
         logger.info(f"Connecting to MT5 with Login: {login}, Server: {server}")
 
@@ -92,6 +114,40 @@ class MT5Adapter:
         self.connected = False
         logger.info("MT5 disconnected")
 
+    def is_connected(self) -> bool:
+        """
+        Check if MT5 is connected and responding.
+
+        Returns:
+            True if connected and healthy, False otherwise
+        """
+        try:
+            account_info = mt5.account_info()
+            if account_info is None:
+                logger.warning("MT5 connection lost - account_info is None")
+                self.connected = False
+                return False
+
+            # Connection is healthy
+            return True
+        except Exception as e:
+            logger.warning(f"MT5 connection check failed: {e}")
+            self.connected = False
+            return False
+
+    def ensure_connected(self) -> bool:
+        """
+        Ensure MT5 is connected, reconnect if needed.
+
+        Returns:
+            True if connected (after reconnect if needed), False if failed
+        """
+        if self.is_connected():
+            return True
+
+        logger.warning("MT5 connection lost, attempting to reconnect...")
+        return self.connect(force_reconnect=True)
+
     def get_symbol_info(self, symbol: str) -> Optional[Dict]:
         """
         Get symbol information from MT5.
@@ -102,7 +158,7 @@ class MT5Adapter:
         Returns:
             Dictionary with symbol info or None if not found
         """
-        if not self.connected:
+        if not self.ensure_connected():
             logger.error("Not connected to MT5")
             return None
 
@@ -175,7 +231,7 @@ class MT5Adapter:
         Returns:
             Order result dictionary or None if failed
         """
-        if not self.connected:
+        if not self.ensure_connected():
             logger.error("Not connected to MT5")
             return None
 
@@ -315,7 +371,7 @@ class MT5Adapter:
         Returns:
             Account info dictionary
         """
-        if not self.connected:
+        if not self.ensure_connected():
             return None
 
         account_info = mt5.account_info()
