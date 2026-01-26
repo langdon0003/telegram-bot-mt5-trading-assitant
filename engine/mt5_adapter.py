@@ -81,15 +81,28 @@ class MT5Adapter:
                 mt5.shutdown()
                 logger.info("MT5 shutdown completed before reconnect")
                 import time
-                time.sleep(1)  # Wait 1 second after shutdown
+                time.sleep(2)  # Wait 2 seconds after shutdown to avoid IPC timeout
             except Exception as e:
                 logger.warning(f"Shutdown warning: {e}")
 
-        # Initialize MT5 connection
-        if not mt5.initialize():
-            error = mt5.last_error()
-            logger.error(f"MT5 initialize failed: {error}")
-            return False
+        # Initialize MT5 connection with retry logic
+        import time
+        max_retries = 3
+        retry_delay = 2  # seconds
+
+        for attempt in range(1, max_retries + 1):
+            if mt5.initialize():
+                break
+            else:
+                error = mt5.last_error()
+                logger.warning(f"MT5 initialize attempt {attempt}/{max_retries} failed: {error}")
+
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(f"MT5 initialize failed after {max_retries} attempts: {error}")
+                    return False
 
         logger.info(f"Connecting to MT5 with Login: {login}, Server: {server}")
 

@@ -22,30 +22,46 @@ print("\n2. Dọn dẹp connections cũ...")
 try:
     mt5.shutdown()
     print("   ✓ Shutdown OK")
-    time.sleep(1)  # Đợi 1 giây
+    time.sleep(2)  # Đợi 2 giây để tránh IPC timeout
 except Exception as e:
     print(f"   ⚠️  Shutdown warning: {e}")
 
-# Bước 3: Initialize
-print("\n3. Initialize MT5...")
-if not mt5.initialize():
-    error = mt5.last_error()
-    print(f"   ✗ Initialize FAILED: {error}")
-    print("\n" + "=" * 60)
-    print("NGUYÊN NHÂN CÓ THỂ:")
-    print("=" * 60)
-    print("1. MT5 terminal không mở")
-    print("2. MT5 bị block bởi antivirus/firewall")
-    print("3. MT5 đang bị crash hoặc freeze")
-    print("4. Thiếu quyền truy cập MT5")
-    print("\nGIẢI PHÁP:")
-    print("- Đóng MT5 hoàn toàn")
-    print("- Mở lại MT5")
-    print("- Chờ MT5 load xong (thấy chart hiển thị)")
-    print("- Chạy lại script này")
-    exit(1)
+# Bước 3: Initialize với retry logic
+print("\n3. Initialize MT5 (với retry logic)...")
+max_retries = 3
+retry_delay = 2
 
-print("   ✓ Initialize OK")
+for attempt in range(1, max_retries + 1):
+    print(f"   Attempt {attempt}/{max_retries}...", end=" ")
+
+    if mt5.initialize():
+        print("✓ OK")
+        break
+    else:
+        error = mt5.last_error()
+        print(f"✗ FAILED: {error}")
+
+        if attempt < max_retries:
+            print(f"   Retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)
+        else:
+            print("\n" + "=" * 60)
+            print("INITIALIZE FAILED AFTER 3 ATTEMPTS")
+            print("=" * 60)
+            print("NGUYÊN NHÂN CÓ THỂ:")
+            print("1. MT5 terminal không mở")
+            print("2. MT5 bị block bởi antivirus/firewall")
+            print("3. MT5 đang bị crash hoặc freeze")
+            print("4. Thiếu quyền truy cập MT5")
+            print("5. MT5 terminal đang busy (đang connect/disconnect)")
+            print("\nGIẢI PHÁP:")
+            print("- Đóng MT5 hoàn toàn")
+            print("- Đợi 10 giây")
+            print("- Mở lại MT5")
+            print("- Chờ MT5 load xong (thấy chart hiển thị)")
+            print("- Đợi thêm 5 giây")
+            print("- Chạy lại script này")
+            exit(1)
 
 # Bước 4: Load env variables
 print("\n4. Đọc credentials từ .env...")

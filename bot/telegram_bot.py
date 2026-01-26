@@ -79,9 +79,9 @@ class TradingBot:
         self.risk_calculator = RiskCalculator()
         self.mt5_adapter = MT5Adapter()
 
-        # Connect to MT5 on initialization
-        if not self.mt5_adapter.connect():
-            logger.warning("MT5 connection failed on bot init. Will retry on trade execution.")
+        # Don't connect to MT5 on initialization to avoid IPC timeout
+        # Connection will be established on first trade execution
+        logger.info("Bot initialized. MT5 connection will be established when needed.")
 
     def run(self):
         """Start the bot"""

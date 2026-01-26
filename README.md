@@ -107,6 +107,10 @@ python3 run_bot.py
 
 See [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) for complete guide in Vietnamese.
 
+## Troubleshooting
+
+Having issues with MT5 connection? See [TROUBLESHOOTING_IPC_TIMEOUT.md](TROUBLESHOOTING_IPC_TIMEOUT.md)
+
 ### Telegram Commands
 
 - `/start` - Initialize bot
