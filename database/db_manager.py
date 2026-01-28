@@ -79,7 +79,7 @@ class DatabaseManager:
         """Update user settings"""
         valid_fields = [
             'default_symbol_base', 'symbol_prefix', 'symbol_suffix',
-            'default_order_type', 'risk_type', 'risk_value', 'default_account_id'
+            'default_order_type', 'risk_type', 'risk_value', 'default_rr_ratio', 'default_account_id'
         ]
 
         updates = {k: v for k, v in kwargs.items() if k in valid_fields}
