@@ -571,7 +571,24 @@ async def setrr_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = db.get_user_settings(user['id'])
     db.close()
 
-    current_rr = settings.get('default_rr_ratio', 2.0)
+    # Handle sqlite3.Row object - check if column exists first
+    column_missing = False
+    try:
+        current_rr = settings['default_rr_ratio'] if settings['default_rr_ratio'] is not None else 2.0
+    except (KeyError, TypeError):
+        # Column doesn't exist yet - user needs to run migration
+        current_rr = 2.0
+        column_missing = True
+
+    if column_missing:
+        await update.message.reply_text(
+            "⚠️ Database migration required!\n\n"
+            "The R:R ratio feature requires a database update.\n\n"
+            "Please ask your admin to run:\n"
+            "```\npython migrate_add_rr_ratio.py\n```\n\n"
+            "Using default R:R ratio: 2.0:1 for now."
+        )
+        return ConversationHandler.END
 
     await update.message.reply_text(
         f"⚙️ Configure R:R Ratio (Risk:Reward)\n\n"

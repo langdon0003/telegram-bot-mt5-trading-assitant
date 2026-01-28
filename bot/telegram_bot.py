@@ -199,7 +199,11 @@ class TradingBot:
         settings = self.db.get_user_settings(user['id'])
 
         if settings:
-            rr_ratio = settings.get('default_rr_ratio', 2.0)
+            # Handle sqlite3.Row object
+            try:
+                rr_ratio = settings['default_rr_ratio'] if settings['default_rr_ratio'] is not None else 2.0
+            except (KeyError, TypeError):
+                rr_ratio = 2.0
             await update.message.reply_text(
                 f"⚙️ Your Settings:\n\n"
                 f"📊 Symbol:\n"
@@ -485,7 +489,12 @@ class TradingBot:
             # Get user's R:R ratio setting
             user_id = context.user_data['user_id']
             settings = self.db.get_user_settings(user_id)
-            rr_ratio = settings.get('default_rr_ratio', 2.0)
+
+            # Handle sqlite3.Row object
+            try:
+                rr_ratio = settings['default_rr_ratio'] if settings['default_rr_ratio'] is not None else 2.0
+            except (KeyError, TypeError):
+                rr_ratio = 2.0
 
             # Calculate TP automatically
             risk_distance = abs(entry - sl)
