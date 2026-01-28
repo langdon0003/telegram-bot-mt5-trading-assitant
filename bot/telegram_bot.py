@@ -33,6 +33,12 @@ from bot.settings_commands import (
     get_setrisktype_handler,
     get_setrr_handler
 )
+from bot.order_commands import (
+    orders_command,
+    orderdetail_command,
+    closeorder_command,
+    handle_order_action
+)
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
@@ -141,6 +147,12 @@ class TradingBot:
         app.add_handler(get_setrisktype_handler())
         app.add_handler(get_setrr_handler())
 
+        # Order management
+        app.add_handler(CommandHandler("orders", orders_command))
+        app.add_handler(CommandHandler("orderdetail", orderdetail_command))
+        app.add_handler(CommandHandler("closeorder", closeorder_command))
+        app.add_handler(CallbackQueryHandler(handle_order_action, pattern="^(close_order_|refresh_order_|confirm_close_|cancel_order_action|cancel_close)"))
+
         # Trade handlers
         app.add_handler(limitbuy_handler)
         app.add_handler(limitsell_handler)
@@ -181,6 +193,10 @@ class TradingBot:
             "/setrisktype - Configure risk type only\n"
             "/setrr - Configure R:R ratio (TP auto-calc)\n"
             "/settings - View current settings\n\n"
+            "📋 Order Management:\n"
+            "/orders - View all pending orders\n"
+            "/orderdetail <ticket> - View order details\n"
+            "/closeorder <ticket> - Close pending order\n\n"
             "🔧 MT5 Connection:\n"
             "/mt5connection - Check MT5 status\n"
             "/reconnectmt5 - Reconnect to MT5\n\n"

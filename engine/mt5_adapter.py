@@ -403,6 +403,141 @@ class MT5Adapter:
             'currency': account_info.currency
         }
 
+    def get_pending_orders(self) -> list:
+        """
+        Get all pending orders (LIMIT BUY/SELL).
+
+        Returns:
+            List of pending order dictionaries
+        """
+        if not self.ensure_connected():
+            logger.error("Not connected to MT5")
+            return []
+
+        orders = mt5.orders_get()
+
+        if orders is None:
+            logger.warning("No pending orders or error fetching orders")
+            return []
+
+        pending_orders = []
+        for order in orders:
+            # Only include LIMIT orders (not STOP orders)
+            if order.type in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_SELL_LIMIT):
+                pending_orders.append({
+                    'ticket': order.ticket,
+                    'symbol': order.symbol,
+                    'type': 'BUY LIMIT' if order.type == mt5.ORDER_TYPE_BUY_LIMIT else 'SELL LIMIT',
+                    'type_raw': order.type,
+                    'volume': order.volume_current,
+                    'price_open': order.price_open,
+                    'sl': order.sl,
+                    'tp': order.tp,
+                    'price_current': order.price_current,
+                    'time_setup': order.time_setup,
+                    'comment': order.comment,
+                    'magic': order.magic
+                })
+
+        return pending_orders
+
+    def get_order_detail(self, ticket: int) -> Optional[Dict]:
+        """
+        Get detailed information about a specific order.
+
+        Args:
+            ticket: Order ticket number
+
+        Returns:
+            Order detail dictionary or None if not found
+        """
+        if not self.ensure_connected():
+            logger.error("Not connected to MT5")
+            return None
+
+        orders = mt5.orders_get(ticket=ticket)
+
+        if orders is None or len(orders) == 0:
+            logger.warning(f"Order {ticket} not found")
+            return None
+
+        order = orders[0]
+
+        # Get symbol info for additional details
+        symbol_info = self.get_symbol_info(order.symbol)
+
+        return {
+            'ticket': order.ticket,
+            'symbol': order.symbol,
+            'type': 'BUY LIMIT' if order.type == mt5.ORDER_TYPE_BUY_LIMIT else 'SELL LIMIT',
+            'type_raw': order.type,
+            'volume': order.volume_current,
+            'price_open': order.price_open,
+            'sl': order.sl,
+            'tp': order.tp,
+            'price_current': order.price_current,
+            'time_setup': order.time_setup,
+            'time_setup_msc': order.time_setup_msc,
+            'comment': order.comment,
+            'magic': order.magic,
+            'state': order.state,
+            'symbol_info': symbol_info
+        }
+
+    def close_pending_order(self, ticket: int) -> Dict:
+        """
+        Close (delete) a pending order.
+
+        Args:
+            ticket: Order ticket number
+
+        Returns:
+            Result dictionary with success status and message
+        """
+        result = {
+            "success": False,
+            "error": None,
+            "ticket": ticket
+        }
+
+        if not self.ensure_connected():
+            result["error"] = "Not connected to MT5"
+            return result
+
+        # Get order details first
+        order_detail = self.get_order_detail(ticket)
+
+        if not order_detail:
+            result["error"] = f"Order {ticket} not found"
+            return result
+
+        # Build close request
+        request = {
+            "action": mt5.TRADE_ACTION_REMOVE,
+            "order": ticket,
+            "comment": "Closed via Telegram Bot"
+        }
+
+        # Send close request
+        close_result = mt5.order_send(request)
+
+        if close_result is None:
+            error = mt5.last_error()
+            result["error"] = f"Close failed: {error}"
+            logger.error(f"Failed to close order {ticket}: {error}")
+            return result
+
+        if close_result.retcode != mt5.TRADE_RETCODE_DONE:
+            result["error"] = f"Close failed: {close_result.retcode} - {close_result.comment}"
+            logger.error(f"Order {ticket} close failed: {close_result.retcode}")
+            return result
+
+        result["success"] = True
+        result["message"] = f"Order {ticket} closed successfully"
+        logger.info(f"Order {ticket} closed successfully")
+
+        return result
+
 
 # Example usage
 if __name__ == "__main__":
