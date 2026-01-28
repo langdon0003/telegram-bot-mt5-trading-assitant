@@ -36,7 +36,7 @@ class MT5Adapter:
         self.trade_validator = TradeValidator()
         self.connected = False
 
-    def connect(self, login: int = None, password: str = None, server: str = None, force_reconnect: bool = False, path: str = None) -> bool:
+    def connect(self, login: int = None, password: str = None, server: str = None, force_reconnect: bool = False) -> bool:
         """
         Connect to MT5.
 
@@ -45,15 +45,9 @@ class MT5Adapter:
             password: MT5 password (optional, reads from env if not provided)
             server: MT5 server (optional, reads from env if not provided)
             force_reconnect: Force shutdown and reconnect even if already connected
-            path: Path to MT5 terminal executable (optional, for multiple instances)
 
         Returns:
             True if connected, False otherwise
-
-        Note:
-            If you have multiple MT5 terminals open, specify 'path' to connect
-            to a specific terminal. Without 'path', it connects to the first
-            terminal found, which may not be the one you want.
         """
         # Read credentials from env if not provided
         if login is None:
@@ -62,8 +56,6 @@ class MT5Adapter:
             password = os.getenv("MT5_PASSWORD")
         if server is None:
             server = os.getenv("MT5_SERVER")
-        if path is None:
-            path = os.getenv("MT5_PATH")
 
         # Check if already connected to the same account
         if not force_reconnect:
@@ -99,23 +91,11 @@ class MT5Adapter:
         retry_delay = 2  # seconds
 
         for attempt in range(1, max_retries + 1):
-            # Initialize with path if provided (for multiple MT5 instances)
-            if path:
-                logger.info(f"Initializing MT5 with specific path: {path}")
-                init_result = mt5.initialize(path=path)
-            else:
-                init_result = mt5.initialize()
-
-            if init_result:
-                logger.info("MT5 initialized successfully")
+            if mt5.initialize():
                 break
             else:
                 error = mt5.last_error()
                 logger.warning(f"MT5 initialize attempt {attempt}/{max_retries} failed: {error}")
-
-                if path:
-                    logger.warning(f"Failed with path: {path}")
-                    logger.warning("Make sure the path points to terminal64.exe or terminal.exe")
 
                 if attempt < max_retries:
                     logger.info(f"Retrying in {retry_delay} seconds...")
@@ -136,28 +116,6 @@ class MT5Adapter:
             logger.info(f"✅ MT5 logged in successfully with account {login}")
         else:
             logger.info("⚠️  No credentials provided, using existing MT5 session")
-
-        # Verify connected account (critical for multiple MT5 instances)
-        account_info = mt5.account_info()
-        if account_info is None:
-            logger.error("Failed to get account info after connection")
-            mt5.shutdown()
-            return False
-
-        connected_account = account_info.login
-        logger.info(f"✅ Connected to account: {connected_account}")
-        logger.info(f"   Server: {account_info.server}")
-        logger.info(f"   Balance: ${account_info.balance:.2f}")
-
-        # Warn if connected to unexpected account
-        if login and int(login) != connected_account:
-            logger.warning("=" * 60)
-            logger.warning(f"⚠️  WARNING: Connected to different account!")
-            logger.warning(f"   Expected: {login}")
-            logger.warning(f"   Got: {connected_account}")
-            logger.warning("=" * 60)
-            logger.warning("If you have multiple MT5 terminals open,")
-            logger.warning("set MT5_PATH in .env to specify which terminal to use")
 
         self.connected = True
         logger.info("MT5 connected successfully")
