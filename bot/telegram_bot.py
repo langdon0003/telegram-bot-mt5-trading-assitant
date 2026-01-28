@@ -30,7 +30,8 @@ from bot.settings_commands import (
     get_setrisk_handler,
     get_setprefix_handler,
     get_setsuffix_handler,
-    get_setrisktype_handler
+    get_setrisktype_handler,
+    get_setrr_handler
 )
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
@@ -138,6 +139,7 @@ class TradingBot:
         app.add_handler(get_setprefix_handler())
         app.add_handler(get_setsuffix_handler())
         app.add_handler(get_setrisktype_handler())
+        app.add_handler(get_setrr_handler())
 
         # Trade handlers
         app.add_handler(limitbuy_handler)
@@ -164,11 +166,21 @@ class TradingBot:
         await update.message.reply_text(
             "Welcome to MT5 Trading Assistant!\n\n"
             "📈 Trading:\n"
-            "/limitbuy - Place LIMIT BUY\n"
-            "/limitsell - Place LIMIT SELL\n\n"
+            "/limitbuy - Place LIMIT BUY order\n"
+            "/limitsell - Place LIMIT SELL order\n\n"
             "📝 Setup Management:\n"
-
-            "/setups - View all setups\n"            "/settings - View current settings\n\n"
+            "/addsetup - Add new trade setup\n"
+            "/editsetup - Edit existing setup\n"
+            "/deletesetup - Delete a setup\n"
+            "/setups - View all setups\n\n"
+            "⚙️ Configuration:\n"
+            "/setsymbol - Configure symbol settings\n"
+            "/setprefix - Configure prefix only\n"
+            "/setsuffix - Configure suffix only\n"
+            "/setrisk - Configure risk settings\n"
+            "/setrisktype - Configure risk type only\n"
+            "/setrr - Configure R:R ratio (TP auto-calc)\n"
+            "/settings - View current settings\n\n"
             "🔧 MT5 Connection:\n"
             "/mt5connection - Check MT5 status\n"
             "/reconnectmt5 - Reconnect to MT5\n\n"
@@ -187,14 +199,19 @@ class TradingBot:
         settings = self.db.get_user_settings(user['id'])
 
         if settings:
+            rr_ratio = settings.get('default_rr_ratio', 2.0)
             await update.message.reply_text(
-                f"Your Settings:\n\n"
-                f"Symbol Base: {settings['default_symbol_base']}\n"
-                f"Symbol Prefix: {settings['symbol_prefix'] or 'None'}\n"
-                f"Symbol Suffix: {settings['symbol_suffix'] or 'None'}\n"
-                f"Risk Type: {settings['risk_type']}\n"
-                f"Risk Value: {settings['risk_value']}\n\n"
-                f"Use /setsymbol, /setrisk /setsymbol /setprefix /setsuffix /setrisk /setrisktype to change settings"
+                f"⚙️ Your Settings:\n\n"
+                f"📊 Symbol:\n"
+                f"  Base: {settings['default_symbol_base']}\n"
+                f"  Prefix: {settings['symbol_prefix'] or 'None'}\n"
+                f"  Suffix: {settings['symbol_suffix'] or 'None'}\n\n"
+                f"💰 Risk:\n"
+                f"  Type: {settings['risk_type']}\n"
+                f"  Value: {settings['risk_value']}\n\n"
+                f"📈 R:R Ratio: {rr_ratio}:1\n"
+                f"  (TP auto-calculated from SL)\n\n"
+                f"Use /setsymbol, /setrisk, /setrr to change settings"
             )
 
     async def manage_setups(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -437,7 +454,7 @@ class TradingBot:
             return ENTRY
 
     async def ask_take_profit(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Ask for take profit"""
+        """Calculate TP automatically from SL and R:R ratio"""
         try:
             sl = float(update.message.text)
             entry = context.user_data['entry']
@@ -465,9 +482,37 @@ class TradingBot:
 
             context.user_data['sl'] = sl
 
-            await update.message.reply_text(f"Stop Loss: {sl}\n\nEnter take profit:")
+            # Get user's R:R ratio setting
+            user_id = context.user_data['user_id']
+            settings = self.db.get_user_settings(user_id)
+            rr_ratio = settings.get('default_rr_ratio', 2.0)
 
-            return TAKE_PROFIT
+            # Calculate TP automatically
+            risk_distance = abs(entry - sl)
+            reward_distance = risk_distance * rr_ratio
+
+            if order_type == 'LIMIT_BUY':
+                tp = entry + reward_distance
+            else:  # LIMIT_SELL
+                tp = entry - reward_distance
+
+            # Round to appropriate precision
+            tp = round(tp, 2)
+            context.user_data['tp'] = tp
+
+            await update.message.reply_text(
+                f"✅ Stop Loss: {sl}\n\n"
+                f"📊 Auto-calculated TP:\n"
+                f"Risk: {risk_distance} points\n"
+                f"R:R: {rr_ratio}:1\n"
+                f"Reward: {reward_distance} points\n"
+                f"TP: {tp}\n\n"
+                f"💡 Use /setrr to change R:R ratio\n\n"
+                f"Proceeding to trade preview..."
+            )
+
+            # Skip TP input, go directly to preview
+            return await self.show_preview(update, context)
 
         except ValueError:
             await update.message.reply_text("Invalid price. Please enter a number:")
@@ -476,12 +521,13 @@ class TradingBot:
     async def show_preview(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show trade preview and ask for emotion"""
         try:
-            tp = float(update.message.text)
-            context.user_data['tp'] = tp
+            # TP is already calculated and stored in context.user_data['tp']
+            # No need to get from user input anymore
 
             # Get trade details
             entry = context.user_data['entry']
             sl = context.user_data['sl']
+            tp = context.user_data['tp']
             order_type = context.user_data['order_type']
             symbol = context.user_data['symbol']
 

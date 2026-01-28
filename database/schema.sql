@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
     default_order_type TEXT DEFAULT 'LIMIT',
     risk_type TEXT DEFAULT 'fixed_usd' CHECK(risk_type IN ('fixed_usd', 'percent')),
     risk_value REAL DEFAULT 100.0,
+    default_rr_ratio REAL DEFAULT 2.0,
     default_account_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

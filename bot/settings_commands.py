@@ -20,6 +20,7 @@ RISK_TYPE, RISK_VALUE = range(3, 5)
 PREFIX_INPUT = 5
 SUFFIX_INPUT = 6
 RISKTYPE_SELECT = 7
+RR_INPUT = 8
 
 
 # ==================== SET SYMBOL ====================
@@ -545,6 +546,111 @@ def get_setrisktype_handler():
         entry_points=[CommandHandler("setrisktype", setrisktype_start)],
         states={
             RISKTYPE_SELECT: [CallbackQueryHandler(save_risktype)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel_settings)]
+    )
+
+
+# ==================== SET RR RATIO ====================
+
+async def setrr_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start /setrr conversation"""
+    from database.db_manager import DatabaseManager
+
+    telegram_id = update.effective_user.id
+    db = DatabaseManager()
+    db.connect()
+
+    user = db.get_user_by_telegram_id(telegram_id)
+
+    if not user:
+        await update.message.reply_text("❌ Please use /start first")
+        db.close()
+        return ConversationHandler.END
+
+    settings = db.get_user_settings(user['id'])
+    db.close()
+
+    current_rr = settings.get('default_rr_ratio', 2.0)
+
+    await update.message.reply_text(
+        f"⚙️ Configure R:R Ratio (Risk:Reward)\n\n"
+        f"Current R:R: {current_rr}:1\n\n"
+        f"📊 Examples:\n"
+        f"• 2 = 2:1 (default) - TP is 2x SL distance\n"
+        f"• 3 = 3:1 - TP is 3x SL distance\n"
+        f"• 1.5 = 1.5:1 - TP is 1.5x SL distance\n\n"
+        f"💡 How it works:\n"
+        f"If Entry=2000, SL=1995 (risk=5 points)\n"
+        f"• R:R 2:1 → TP=2010 (reward=10 points)\n"
+        f"• R:R 3:1 → TP=2015 (reward=15 points)\n\n"
+        f"Enter new R:R ratio (e.g., 2, 2.5, 3):"
+    )
+
+    return RR_INPUT
+
+
+async def save_rr(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Save R:R ratio setting"""
+    from database.db_manager import DatabaseManager
+
+    try:
+        rr_ratio = float(update.message.text)
+
+        # Validate R:R ratio
+        if rr_ratio <= 0:
+            await update.message.reply_text(
+                "❌ R:R ratio must be positive!\n\n"
+                "Enter a valid R:R ratio (e.g., 2, 2.5, 3):"
+            )
+            return RR_INPUT
+
+        if rr_ratio > 10:
+            await update.message.reply_text(
+                "❌ R:R ratio too high (max 10)!\n\n"
+                "Enter a realistic R:R ratio (e.g., 2, 2.5, 3):"
+            )
+            return RR_INPUT
+
+        telegram_id = update.effective_user.id
+        db = DatabaseManager()
+        db.connect()
+
+        user = db.get_user_by_telegram_id(telegram_id)
+
+        # Update RR ratio
+        db.update_user_settings(
+            user_id=user['id'],
+            default_rr_ratio=rr_ratio
+        )
+
+        db.close()
+
+        await update.message.reply_text(
+            f"✅ R:R ratio updated!\n\n"
+            f"New R:R: {rr_ratio}:1\n\n"
+            f"📊 Example:\n"
+            f"If Entry=2000, SL=1995 (risk=5 points)\n"
+            f"→ TP will be auto-calculated: 2000 + (5 × {rr_ratio}) = {2000 + (5 * rr_ratio)}\n\n"
+            f"Now when you place trades, TP will be calculated automatically!"
+        )
+
+        return ConversationHandler.END
+
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Invalid number!\n\n"
+            "Enter a valid R:R ratio (e.g., 2, 2.5, 3):"
+        )
+        return RR_INPUT
+
+
+def get_setrr_handler():
+    """Get the /setrr conversation handler"""
+    return ConversationHandler(
+        entry_points=[CommandHandler("setrr", setrr_start)],
+        states={
+            RR_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_rr)]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)]
     )
