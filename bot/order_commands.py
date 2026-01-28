@@ -24,25 +24,20 @@ async def orders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle /orders command - Show all pending orders.
     """
-    from engine.mt5_adapter import MT5Adapter
-
     telegram_id = update.effective_user.id
 
-    # Get pending orders from MT5
-    adapter = MT5Adapter()
+    # Get shared MT5 adapter from bot context
+    adapter = context.bot_data.get('mt5_adapter')
 
-    if not adapter.connect():
+    if not adapter:
         await update.message.reply_text(
-            "❌ Failed to connect to MT5\n\n"
-            "Please ensure:\n"
-            "- MetaTrader 5 is running\n"
-            "- You are logged in\n\n"
-            "Use /reconnectmt5 to retry"
+            "❌ MT5 adapter not available\n\n"
+            "Please restart the bot."
         )
         return
 
+    # Get pending orders - adapter handles connection automatically
     pending_orders = adapter.get_pending_orders()
-    adapter.disconnect()
 
     if not pending_orders:
         await update.message.reply_text(
@@ -87,8 +82,6 @@ async def orderdetail_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     """
     Handle /orderdetail <ticket> command - Show order details.
     """
-    from engine.mt5_adapter import MT5Adapter
-
     # Check if ticket provided
     if not context.args or len(context.args) == 0:
         await update.message.reply_text(
@@ -108,18 +101,17 @@ async def orderdetail_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    # Get order detail from MT5
-    adapter = MT5Adapter()
+    # Get shared MT5 adapter
+    adapter = context.bot_data.get('mt5_adapter')
 
-    if not adapter.connect():
+    if not adapter:
         await update.message.reply_text(
-            "❌ Failed to connect to MT5\n\n"
-            "Use /reconnectmt5 to retry"
+            "❌ MT5 adapter not available\n\n"
+            "Please restart the bot."
         )
         return
 
     order_detail = adapter.get_order_detail(ticket)
-    adapter.disconnect()
 
     if not order_detail:
         await update.message.reply_text(
@@ -193,8 +185,6 @@ async def closeorder_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """
     Handle /closeorder <ticket> command - Close pending order.
     """
-    from engine.mt5_adapter import MT5Adapter
-
     # Check if ticket provided
     if not context.args or len(context.args) == 0:
         await update.message.reply_text(
@@ -214,20 +204,19 @@ async def closeorder_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
-    # Get order detail first
-    adapter = MT5Adapter()
+    # Get shared MT5 adapter
+    adapter = context.bot_data.get('mt5_adapter')
 
-    if not adapter.connect():
+    if not adapter:
         await update.message.reply_text(
-            "❌ Failed to connect to MT5\n\n"
-            "Use /reconnectmt5 to retry"
+            "❌ MT5 adapter not available\n\n"
+            "Please restart the bot."
         )
         return
 
     order_detail = adapter.get_order_detail(ticket)
 
     if not order_detail:
-        adapter.disconnect()
         await update.message.reply_text(
             f"❌ Order {ticket} not found\n\n"
             "Use /orders to see current pending orders"
@@ -251,20 +240,22 @@ async def closeorder_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Store adapter in context for later use
-    context.user_data['mt5_adapter'] = adapter
-
     await update.message.reply_text(message, reply_markup=reply_markup)
 
 
 async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline button callbacks for order actions"""
-    from engine.mt5_adapter import MT5Adapter
-
     query = update.callback_query
     await query.answer()
 
     data = query.data
+
+    # Get shared MT5 adapter
+    adapter = context.bot_data.get('mt5_adapter')
+
+    if not adapter:
+        await query.edit_message_text("❌ MT5 adapter not available")
+        return ConversationHandler.END
 
     # Cancel actions
     if data in ("cancel_order_action", "cancel_close"):
@@ -275,13 +266,7 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if data.startswith("refresh_order_"):
         ticket = int(data.replace("refresh_order_", ""))
 
-        adapter = MT5Adapter()
-        if not adapter.connect():
-            await query.edit_message_text("❌ Failed to connect to MT5")
-            return ConversationHandler.END
-
         order_detail = adapter.get_order_detail(ticket)
-        adapter.disconnect()
 
         if not order_detail:
             await query.edit_message_text(f"❌ Order {ticket} not found")
@@ -336,15 +321,9 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if data.startswith("close_order_"):
         ticket = int(data.replace("close_order_", ""))
 
-        adapter = MT5Adapter()
-        if not adapter.connect():
-            await query.edit_message_text("❌ Failed to connect to MT5")
-            return ConversationHandler.END
-
         order_detail = adapter.get_order_detail(ticket)
 
         if not order_detail:
-            adapter.disconnect()
             await query.edit_message_text(f"❌ Order {ticket} not found")
             return ConversationHandler.END
 
@@ -364,8 +343,6 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        context.user_data['mt5_adapter'] = adapter
-
         await query.edit_message_text(message, reply_markup=reply_markup)
         return ConversationHandler.END
 
@@ -373,17 +350,8 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if data.startswith("confirm_close_"):
         ticket = int(data.replace("confirm_close_", ""))
 
-        # Get adapter from context or create new
-        adapter = context.user_data.get('mt5_adapter')
-        if not adapter:
-            adapter = MT5Adapter()
-            if not adapter.connect():
-                await query.edit_message_text("❌ Failed to connect to MT5")
-                return ConversationHandler.END
-
         # Close the order
         result = adapter.close_pending_order(ticket)
-        adapter.disconnect()
 
         if result['success']:
             await query.edit_message_text(

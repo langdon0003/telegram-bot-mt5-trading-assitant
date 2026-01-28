@@ -94,6 +94,10 @@ class TradingBot:
         """Start the bot"""
         app = Application.builder().token(self.token).build()
 
+        # Store MT5 adapter in bot_data for shared access
+        app.bot_data['mt5_adapter'] = self.mt5_adapter
+        app.bot_data['db'] = self.db
+
         # Conversation handler for /limitbuy
         limitbuy_handler = ConversationHandler(
             entry_points=[CommandHandler("limitbuy", self.limitbuy_start)],
