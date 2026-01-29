@@ -44,6 +44,7 @@ from bot.order_commands import (
     handle_order_action
 )
 from bot.modify_order_commands import get_modifyorder_handler
+from bot.position_commands import positions_command, handle_position_action
 from bot.conversation_utils import cancel_conversation, cancel_and_process_new_command
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
@@ -117,6 +118,9 @@ class TradingBot:
             BotCommand("orderdetail", "🔍 View order details"),
             BotCommand("modifyorder", "✏️ Modify pending order"),
             BotCommand("closeorder", "❌ Close pending order"),
+
+            # Positions
+            BotCommand("positions", "💼 View & close positions"),
 
             # Settings
             BotCommand("settings", "⚙️ View current settings"),
@@ -282,6 +286,10 @@ class TradingBot:
         app.add_handler(CommandHandler("closeorder", closeorder_command))
         app.add_handler(get_modifyorder_handler())
         app.add_handler(CallbackQueryHandler(handle_order_action, pattern="^(close_order_|refresh_order_|confirm_close_|cancel_order_action|cancel_close)"))
+
+        # Position management
+        app.add_handler(CommandHandler("positions", positions_command))
+        app.add_handler(CallbackQueryHandler(handle_position_action, pattern="^(close_pos_|refresh_positions|confirm_close_pos_|cancel_close_pos)"))
 
         # Menu callbacks (must be before trade handlers to catch menu_* callbacks)
         app.add_handler(CallbackQueryHandler(handle_menu_callback, pattern="^(menu_|action_)"))

@@ -451,6 +451,94 @@ class MT5Adapter:
 
         return pending_orders
 
+    def get_open_positions(self) -> list:
+        """
+        Get all open positions (active trades).
+
+        Returns:
+            List of open position dictionaries
+        """
+        if not self.ensure_connected():
+            logger.error("Not connected to MT5")
+            return []
+
+        positions = mt5.positions_get()
+
+        if positions is None:
+            logger.warning("No open positions or error fetching positions")
+            return []
+
+        open_positions = []
+        for position in positions:
+            # Get current price for profit calculation
+            symbol_info = self.get_symbol_info(position.symbol)
+            current_price = symbol_info['bid'] if position.type == mt5.POSITION_TYPE_BUY else symbol_info['ask']
+
+            open_positions.append({
+                'ticket': position.ticket,
+                'symbol': position.symbol,
+                'type': 'BUY' if position.type == mt5.POSITION_TYPE_BUY else 'SELL',
+                'type_raw': position.type,
+                'volume': position.volume,
+                'price_open': position.price_open,
+                'price_current': current_price,
+                'sl': position.sl,
+                'tp': position.tp,
+                'profit': position.profit,
+                'swap': position.swap,
+                'commission': position.commission,
+                'time': position.time,
+                'comment': position.comment,
+                'magic': position.magic
+            })
+
+        return open_positions
+
+    def get_position_detail(self, ticket: int) -> Optional[Dict]:
+        """
+        Get detailed information about a specific position.
+
+        Args:
+            ticket: Position ticket number
+
+        Returns:
+            Position detail dictionary or None if not found
+        """
+        if not self.ensure_connected():
+            logger.error("Not connected to MT5")
+            return None
+
+        positions = mt5.positions_get(ticket=ticket)
+
+        if positions is None or len(positions) == 0:
+            logger.warning(f"Position {ticket} not found")
+            return None
+
+        position = positions[0]
+
+        # Get symbol info for additional details
+        symbol_info = self.get_symbol_info(position.symbol)
+        current_price = symbol_info['bid'] if position.type == mt5.POSITION_TYPE_BUY else symbol_info['ask']
+
+        return {
+            'ticket': position.ticket,
+            'symbol': position.symbol,
+            'type': 'BUY' if position.type == mt5.POSITION_TYPE_BUY else 'SELL',
+            'type_raw': position.type,
+            'volume': position.volume,
+            'price_open': position.price_open,
+            'price_current': current_price,
+            'sl': position.sl,
+            'tp': position.tp,
+            'profit': position.profit,
+            'swap': position.swap,
+            'commission': position.commission,
+            'time': position.time,
+            'comment': position.comment,
+            'magic': position.magic,
+            'symbol_info': symbol_info
+        }
+
     def get_order_detail(self, ticket: int) -> Optional[Dict]:
         """
         Get detailed information about a specific order.
@@ -625,6 +713,86 @@ class MT5Adapter:
         result["new_sl"] = new_sl
         result["new_tp"] = new_tp
         logger.info(f"Order {ticket} modified: Price={new_price}, SL={new_sl}, TP={new_tp}")
+
+        return result
+
+    def close_position(self, ticket: int) -> Dict:
+        """
+        Close an open position (market order).
+
+        Args:
+            ticket: Position ticket number
+
+        Returns:
+            Result dictionary with success status and message
+        """
+        result = {
+            "success": False,
+            "error": None,
+            "ticket": ticket
+        }
+
+        if not self.ensure_connected():
+            result["error"] = "Not connected to MT5"
+            return result
+
+        # Get position details first
+        position_detail = self.get_position_detail(ticket)
+
+        if not position_detail:
+            result["error"] = f"Position {ticket} not found"
+            return result
+
+        # Get symbol info
+        symbol_info = position_detail['symbol_info']
+        if not symbol_info:
+            result["error"] = f"Symbol {position_detail['symbol']} info not available"
+            return result
+
+        # Determine order type (opposite of position type)
+        # To close BUY position, we need to SELL
+        # To close SELL position, we need to BUY
+        if position_detail['type_raw'] == mt5.POSITION_TYPE_BUY:
+            order_type = mt5.ORDER_TYPE_SELL
+            price = symbol_info['bid']
+        else:
+            order_type = mt5.ORDER_TYPE_BUY
+            price = symbol_info['ask']
+
+        # Build close request
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": position_detail['symbol'],
+            "volume": position_detail['volume'],
+            "type": order_type,
+            "position": ticket,  # Specify which position to close
+            "price": price,
+            "deviation": 20,  # Maximum price deviation in points
+            "magic": position_detail['magic'],
+            "comment": "Closed via Telegram Bot",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,  # Immediate or Cancel
+        }
+
+        # Send close request
+        close_result = mt5.order_send(request)
+
+        if close_result is None:
+            error = mt5.last_error()
+            result["error"] = f"Close failed: {error}"
+            logger.error(f"Failed to close position {ticket}: {error}")
+            return result
+
+        if close_result.retcode != mt5.TRADE_RETCODE_DONE:
+            result["error"] = f"Close failed: {close_result.retcode} - {close_result.comment}"
+            logger.error(f"Position {ticket} close failed: {close_result.retcode}")
+            return result
+
+        result["success"] = True
+        result["message"] = f"Position {ticket} closed successfully"
+        result["close_price"] = price
+        result["profit"] = position_detail['profit']
+        logger.info(f"Position {ticket} closed at {price}, Profit: {position_detail['profit']}")
 
         return result
 

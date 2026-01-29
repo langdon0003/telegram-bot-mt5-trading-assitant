@@ -70,9 +70,12 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, is_
         [InlineKeyboardButton("📊 Place Order", callback_data="menu_place_order")],
         [
             InlineKeyboardButton("📋 View Orders", callback_data="menu_view_orders"),
-            InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")
+            InlineKeyboardButton("💼 Positions", callback_data="menu_view_positions")
         ],
-        [InlineKeyboardButton("🔧 More Commands", callback_data="menu_more_commands")]
+        [
+            InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings"),
+            InlineKeyboardButton("🔧 More Commands", callback_data="menu_more_commands")
+        ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -87,6 +90,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, is_
             "Vui lòng chọn menu:\n\n"
             "• *Place Order* - Open new trade\n"
             "• *View Orders* - Check pending orders\n"
+            "• *Positions* - View & close open trades\n"
             "• *Settings* - Configure bot settings\n"
             "• *More Commands* - View all commands"
         )
@@ -96,6 +100,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, is_
             "👋 Vui lòng chọn menu:\n\n"
             "• *Place Order* - Open new trade\n"
             "• *View Orders* - Check pending orders\n"
+            "• *Positions* - View & close open trades\n"
             "• *Settings* - Configure bot settings\n"
             "• *More Commands* - View all commands"
         )
@@ -153,6 +158,18 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         await show_main_menu(update, context)
 
+    elif data == "menu_view_positions":
+        # Trigger /positions command
+        await safe_edit_message(query, "Loading open positions...")
+        # Import here to avoid circular dependency
+        from bot.position_commands import positions_command
+        # Send positions command info
+        await query.message.reply_text(
+            "Use /positions command to view all open positions.\n\n"
+            "You can close positions directly from the /positions view."
+        )
+        await show_main_menu(update, context)
+
     elif data == "menu_settings":
         # Show settings menu
         keyboard = [
@@ -196,6 +213,8 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             "/orderdetail <ticket> - View order details\n"
             "/modifyorder <ticket> - Modify pending order\n"
             "/closeorder <ticket> - Close pending order\n\n"
+            "💼 *Position Management:*\n"
+            "/positions - View & close open positions\n\n"
             "🔧 *MT5 Connection:*\n"
             "/mt5connection - Check MT5 status\n"
             "/reconnectmt5 - Reconnect to MT5\n\n"
