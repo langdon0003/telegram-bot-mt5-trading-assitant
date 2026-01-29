@@ -197,10 +197,6 @@ class TradingBot:
             .token(self.token)\
             .post_init(self.setup_bot_menu)\
             .request(request)\
-            .connect_timeout(30.0)\
-            .read_timeout(30.0)\
-            .write_timeout(30.0)\
-            .pool_timeout(30.0)\
             .build()
 
         # Store MT5 adapter in bot_data for shared access
