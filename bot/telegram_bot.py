@@ -192,6 +192,7 @@ class TradingBot:
     def run(self):
         """Start the bot"""
         from telegram.request import HTTPXRequest
+        from telegram.ext import AIORateLimiter
 
         # Configure request with longer timeouts and automatic retry
         request = HTTPXRequest(
@@ -202,10 +203,22 @@ class TradingBot:
             http_version="1.1"     # HTTP/1.1 for better compatibility
         )
 
+        # Configure rate limiter to prevent hitting Telegram limits
+        # Default Telegram limits: 30 messages/second, but we use conservative limits
+        rate_limiter = AIORateLimiter(
+            max_retries=3,              # Retry up to 3 times on rate limit
+            overall_max_rate=20,        # Max 20 requests/second overall (conservative)
+            overall_time_period=1.0,    # Per 1 second
+            group_max_rate=20,          # Max 20 messages/minute to groups
+            group_time_period=60.0,     # Per 60 seconds
+            max_chat_delay=0.05         # 50ms delay between messages to same chat
+        )
+
         app = Application.builder()\
             .token(self.token)\
             .post_init(self.setup_bot_menu)\
             .request(request)\
+            .rate_limiter(rate_limiter)\
             .build()
 
         # Store MT5 adapter in bot_data for shared access

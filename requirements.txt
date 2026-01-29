@@ -3,3 +3,4 @@ pytest-asyncio==0.21.1
 python-telegram-bot==22.5
 MetaTrader5==5.0.5488
 python-dotenv==1.0.0
+requests==2.31.0
