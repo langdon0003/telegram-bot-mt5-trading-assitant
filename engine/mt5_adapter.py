@@ -57,6 +57,9 @@ class MT5Adapter:
         if server is None:
             server = os.getenv("MT5_SERVER")
 
+        # Read MT5 terminal path from env
+        mt5_terminal_path = os.getenv("MT5_TERMINAL_PATH")
+
         # Check if already connected to the same account
         if not force_reconnect:
             try:
@@ -91,7 +94,14 @@ class MT5Adapter:
         retry_delay = 2  # seconds
 
         for attempt in range(1, max_retries + 1):
-            if mt5.initialize():
+            # Initialize with terminal path if provided
+            if mt5_terminal_path:
+                logger.info(f"Initializing MT5 with terminal path: {mt5_terminal_path}")
+                init_result = mt5.initialize(path=mt5_terminal_path)
+            else:
+                init_result = mt5.initialize()
+
+            if init_result:
                 break
             else:
                 error = mt5.last_error()
