@@ -148,6 +148,7 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             "Use /orders command to view all pending orders.\n\n"
             "Quick commands:\n"
             "/orderdetail <ticket> - View details\n"
+            "/modifyorder <ticket> - Modify order\n"
             "/closeorder <ticket> - Close order"
         )
         await show_main_menu(update, context)
@@ -193,6 +194,7 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             "📋 *Order Management:*\n"
             "/orders - View all pending orders\n"
             "/orderdetail <ticket> - View order details\n"
+            "/modifyorder <ticket> - Modify pending order\n"
             "/closeorder <ticket> - Close pending order\n\n"
             "🔧 *MT5 Connection:*\n"
             "/mt5connection - Check MT5 status\n"

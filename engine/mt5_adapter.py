@@ -548,6 +548,86 @@ class MT5Adapter:
 
         return result
 
+    def modify_order(self, ticket: int, price: float = None, sl: float = None, tp: float = None) -> Dict:
+        """
+        Modify a pending order's entry price, stop loss, or take profit.
+
+        Args:
+            ticket: Order ticket number
+            price: New entry price (None = keep current)
+            sl: New stop loss (None = keep current)
+            tp: New take profit (None = keep current)
+
+        Returns:
+            Result dictionary with success status and message
+        """
+        result = {
+            "success": False,
+            "error": None,
+            "ticket": ticket
+        }
+
+        if not self.ensure_connected():
+            result["error"] = "Not connected to MT5"
+            return result
+
+        # Get current order details
+        order_detail = self.get_order_detail(ticket)
+
+        if not order_detail:
+            result["error"] = f"Order {ticket} not found"
+            return result
+
+        # Use current values if not provided
+        new_price = price if price is not None else order_detail['price_open']
+        new_sl = sl if sl is not None else order_detail['sl']
+        new_tp = tp if tp is not None else order_detail['tp']
+
+        # Get symbol info for validation
+        symbol_info = order_detail['symbol_info']
+        if not symbol_info:
+            result["error"] = f"Symbol {order_detail['symbol']} info not available"
+            return result
+
+        # Normalize prices to symbol's digits
+        new_price = round(new_price, symbol_info['digits'])
+        new_sl = round(new_sl, symbol_info['digits']) if new_sl > 0 else 0.0
+        new_tp = round(new_tp, symbol_info['digits']) if new_tp > 0 else 0.0
+
+        # Build modify request
+        request = {
+            "action": mt5.TRADE_ACTION_MODIFY,
+            "order": ticket,
+            "price": new_price,
+            "sl": new_sl,
+            "tp": new_tp,
+            "type_time": mt5.ORDER_TIME_GTC,  # Good Till Cancelled
+            "comment": "Modified via Telegram Bot"
+        }
+
+        # Send modify request
+        modify_result = mt5.order_send(request)
+
+        if modify_result is None:
+            error = mt5.last_error()
+            result["error"] = f"Modify failed: {error}"
+            logger.error(f"Failed to modify order {ticket}: {error}")
+            return result
+
+        if modify_result.retcode != mt5.TRADE_RETCODE_DONE:
+            result["error"] = f"Modify failed: {modify_result.retcode} - {modify_result.comment}"
+            logger.error(f"Order {ticket} modify failed: {modify_result.retcode}")
+            return result
+
+        result["success"] = True
+        result["message"] = f"Order {ticket} modified successfully"
+        result["new_price"] = new_price
+        result["new_sl"] = new_sl
+        result["new_tp"] = new_tp
+        logger.info(f"Order {ticket} modified: Price={new_price}, SL={new_sl}, TP={new_tp}")
+
+        return result
+
 
 # Example usage
 if __name__ == "__main__":
