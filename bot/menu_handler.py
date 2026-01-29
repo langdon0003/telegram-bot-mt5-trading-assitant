@@ -14,22 +14,49 @@ from telegram import (
     ReplyKeyboardRemove
 )
 from telegram.ext import ContextTypes, ConversationHandler
+from telegram.error import BadRequest
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def safe_edit_message(query, text, reply_markup=None, parse_mode='Markdown'):
+    """
+    Safely edit a message, falling back to sending a new message if edit fails.
+
+    Args:
+        query: CallbackQuery object
+        text: Message text
+        reply_markup: Optional keyboard markup
+        parse_mode: Parse mode (default: Markdown)
+    """
+    try:
+        await query.edit_message_text(
+            text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
+    except BadRequest as e:
+        logger.warning(f"Failed to edit message: {e}. Sending new message instead.")
+        # If edit fails, send a new message
+        await query.message.reply_text(
+            text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
+
+
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, is_new_user: bool = False):
     """
     Display main menu with quick actions and trading options.
 
     Called by /start command or "Back to Menu" buttons.
-    """
-    # Use either message or callback query
-    if update.callback_query:
-        query = update.callback_query
-        await query.answer()
-        send_func = query.edit_message_text
-    else:
-        send_func = update.message.reply_text
 
+    Args:
+        update: Update object
+        context: Context object
+        is_new_user: If True, show welcome message for new users
+    """
     keyboard = [
         [InlineKeyboardButton("📊 Place Order", callback_data="menu_place_order")],
         [
@@ -40,20 +67,41 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    message_text = (
-        "📱 *MT5 Trading Assistant Menu*\n\n"
-        "👋 Vui lòng chọn menu:\n\n"
-        "• *Place Order* - Open new trade\n"
-        "• *View Orders* - Check pending orders\n"
-        "• *Settings* - Configure bot settings\n"
-        "• *More Commands* - View all commands"
-    )
+    # Add welcome message for new users
+    if is_new_user:
+        first_name = update.effective_user.first_name
+        message_text = (
+            f"👋 *Welcome to MT5 Trading Assistant!*\n\n"
+            f"Hi {first_name}, your account has been created. Let's get started! 🚀\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📱 *Main Menu*\n\n"
+            "Vui lòng chọn menu:\n\n"
+            "• *Place Order* - Open new trade\n"
+            "• *View Orders* - Check pending orders\n"
+            "• *Settings* - Configure bot settings\n"
+            "• *More Commands* - View all commands"
+        )
+    else:
+        message_text = (
+            "📱 *MT5 Trading Assistant Menu*\n\n"
+            "👋 Vui lòng chọn menu:\n\n"
+            "• *Place Order* - Open new trade\n"
+            "• *View Orders* - Check pending orders\n"
+            "• *Settings* - Configure bot settings\n"
+            "• *More Commands* - View all commands"
+        )
 
-    await send_func(
-        message_text,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
+    # Try to edit message if from callback, otherwise send new message
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        await safe_edit_message(query, message_text, reply_markup)
+    else:
+        await update.message.reply_text(
+            message_text,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
 
 
 async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -72,16 +120,16 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query.edit_message_text(
+        await safe_edit_message(
+            query,
             "📊 *Trading Menu*\n\n"
             "Select order type:",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
+            reply_markup
         )
 
     elif data == "menu_view_orders":
         # Trigger /orders command
-        await query.edit_message_text("Loading pending orders...")
+        await safe_edit_message(query, "Loading pending orders...")
         # Import here to avoid circular dependency
         from bot.order_commands import orders_command
         # Create a fake message update to trigger orders_command
@@ -106,16 +154,17 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query.edit_message_text(
+        await safe_edit_message(
+            query,
             "⚙️ *Settings Menu*\n\n"
             "Configure your trading settings:",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
+            reply_markup
         )
 
     elif data == "menu_more_commands":
         # Show all commands
-        await query.edit_message_text(
+        await safe_edit_message(
+            query,
             "📋 *All Commands*\n\n"
             "📈 *Trading:*\n"
             "/limitbuy - Place LIMIT BUY order\n"
@@ -139,8 +188,7 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             "🔧 *MT5 Connection:*\n"
             "/mt5connection - Check MT5 status\n"
             "/reconnectmt5 - Reconnect to MT5\n\n"
-            "/cancel - Cancel current operation",
-            parse_mode='Markdown'
+            "/cancel - Cancel current operation"
         )
         # Add back button
         keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data="menu_back")]]
@@ -179,10 +227,10 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         )
 
         # Edit menu message
-        await query.edit_message_text(
+        await safe_edit_message(
+            query,
             f"*{friendly_name}*\n\n"
-            f"👇 Tap the button below to start:",
-            parse_mode='Markdown'
+            f"👇 Tap the button below to start:"
         )
 
         # Send keyboard

@@ -18,7 +18,7 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
-from telegram.error import TimedOut, NetworkError, RetryAfter
+from telegram.error import TimedOut, NetworkError, RetryAfter, BadRequest
 
 from bot.trade_command_builder import TradeCommandBuilder
 from bot.setup_commands import (
@@ -166,6 +166,11 @@ class TradingBot:
             # Bot will automatically retry after the specified time
             return
 
+        if isinstance(error, BadRequest):
+            logger.warning(f"⚠️ Bad request error: {error}")
+            # Don't notify user - these are handled in menu_handler
+            return
+
         if isinstance(error, NetworkError):
             logger.warning(f"⚠️ Network error: {error}")
             # Don't notify user - transient network issues
@@ -280,6 +285,7 @@ class TradingBot:
 
         # Get or create user
         user = self.db.get_user_by_telegram_id(telegram_id)
+        is_new_user = False
         if not user:
             user_id = self.db.create_user(
                 telegram_id=telegram_id,
@@ -288,16 +294,10 @@ class TradingBot:
                 last_name=update.effective_user.last_name
             )
             self.db.create_default_settings(user_id)
+            is_new_user = True
 
-            # Welcome message for new users
-            await update.message.reply_text(
-                f"👋 Welcome to MT5 Trading Assistant!\n\n"
-                f"Hi {update.effective_user.first_name}, your account has been created.\n\n"
-                f"Let's get started! 🚀"
-            )
-
-        # Show main menu
-        await show_main_menu(update, context)
+        # Show main menu (with welcome message for new users)
+        await show_main_menu(update, context, is_new_user=is_new_user)
 
     async def settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /settings command"""
