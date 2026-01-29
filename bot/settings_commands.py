@@ -203,7 +203,13 @@ async def ask_risk_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    risk_type = query.data.replace("risk_", "")
+    # Extract risk type from callback data (format: "risk_fixed_usd" or "risk_percent")
+    # Make sure we only match "risk_" prefix, not "risktype_"
+    if not query.data.startswith("risk_"):
+        await query.edit_message_text("❌ Invalid action")
+        return ConversationHandler.END
+
+    risk_type = query.data.replace("risk_", "", 1)  # Replace only first occurrence
     context.user_data['risk_type'] = risk_type
 
     if risk_type == "fixed_usd":
@@ -296,7 +302,7 @@ def get_setrisk_handler():
     return ConversationHandler(
         entry_points=[CommandHandler("setrisk", setrisk_start)],
         states={
-            RISK_TYPE: [CallbackQueryHandler(ask_risk_value)],
+            RISK_TYPE: [CallbackQueryHandler(ask_risk_value, pattern="^risk_(fixed_usd|percent)$")],
             RISK_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_risk_settings)]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)]
@@ -545,7 +551,7 @@ def get_setrisktype_handler():
     return ConversationHandler(
         entry_points=[CommandHandler("setrisktype", setrisktype_start)],
         states={
-            RISKTYPE_SELECT: [CallbackQueryHandler(save_risktype)]
+            RISKTYPE_SELECT: [CallbackQueryHandler(save_risktype, pattern="^risktype_(fixed_usd|percent)$")]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)]
     )
