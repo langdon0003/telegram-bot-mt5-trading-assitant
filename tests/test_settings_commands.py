@@ -236,27 +236,27 @@ class TestSetRiskTypeFlow:
         # Mock context with risk_type set to fixed_usd
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'fixed_usd'}
+        
+        # Mock database from bot_data
+        mock_db = MagicMock()
+        mock_db.get_user_by_telegram_id.return_value = {'id': 1}
+        mock_db.update_user_settings = MagicMock()
+        context.application.bot_data = {'db': mock_db}
 
-        # Mock database (patch at import source, not module level)
-        with patch('database.db_manager.DatabaseManager') as MockDB:
-            mock_db_instance = MockDB.return_value
-            mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
-            mock_db_instance.update_user_settings = MagicMock()
+        result = await save_risktype_settings(update, context)
 
-            result = await save_risktype_settings(update, context)
+        # Verify database was updated correctly
+        mock_db.update_user_settings.assert_called_once_with(
+            user_id=1,
+            risk_type='fixed_usd',
+            risk_value=100.0  # No conversion for fixed_usd
+        )
 
-            # Verify database was updated correctly
-            mock_db_instance.update_user_settings.assert_called_once_with(
-                user_id=1,
-                risk_type='fixed_usd',
-                risk_value=100.0  # No conversion for fixed_usd
-            )
-
-            # Verify success message sent
-            update.message.reply_text.assert_called_once()
-            call_args = update.message.reply_text.call_args[0][0]
-            assert "✅ Risk settings saved!" in call_args
-            assert "$100" in call_args
+        # Verify success message sent
+        update.message.reply_text.assert_called_once()
+        call_args = update.message.reply_text.call_args[0][0]
+        assert "✅ Risk settings saved!" in call_args
+        assert "$100" in call_args
 
     @pytest.mark.asyncio
     async def test_setrisktype_percent_flow(self):
@@ -278,27 +278,27 @@ class TestSetRiskTypeFlow:
         # Mock context with risk_type set to percent
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'percent'}
+        
+        # Mock database from bot_data
+        mock_db = MagicMock()
+        mock_db.get_user_by_telegram_id.return_value = {'id': 1}
+        mock_db.update_user_settings = MagicMock()
+        context.application.bot_data = {'db': mock_db}
 
-        # Mock database
-        with patch('database.db_manager.DatabaseManager') as MockDB:
-            mock_db_instance = MockDB.return_value
-            mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
-            mock_db_instance.update_user_settings = MagicMock()
+        result = await save_risktype_settings(update, context)
 
-            result = await save_risktype_settings(update, context)
+        # Verify database was updated correctly
+        mock_db.update_user_settings.assert_called_once_with(
+            user_id=1,
+            risk_type='percent',
+            risk_value=0.01  # Converted from 1% to 0.01
+        )
 
-            # Verify database was updated correctly
-            mock_db_instance.update_user_settings.assert_called_once_with(
-                user_id=1,
-                risk_type='percent',
-                risk_value=0.01  # Converted from 1% to 0.01
-            )
-
-            # Verify success message sent
-            update.message.reply_text.assert_called_once()
-            call_args = update.message.reply_text.call_args[0][0]
-            assert "✅ Risk settings saved!" in call_args
-            assert "1.0%" in call_args  # Python formats as 1.0, not 1
+        # Verify success message sent
+        update.message.reply_text.assert_called_once()
+        call_args = update.message.reply_text.call_args[0][0]
+        assert "✅ Risk settings saved!" in call_args
+        assert "1.0%" in call_args  # Python formats as 1.0, not 1
 
     @pytest.mark.asyncio
     async def test_setrisktype_percent_half_percent(self):
@@ -318,20 +318,21 @@ class TestSetRiskTypeFlow:
 
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'percent'}
+        
+        # Mock database from bot_data
+        mock_db = MagicMock()
+        mock_db.get_user_by_telegram_id.return_value = {'id': 1}
+        mock_db.update_user_settings = MagicMock()
+        context.application.bot_data = {'db': mock_db}
 
-        with patch('database.db_manager.DatabaseManager') as MockDB:
-            mock_db_instance = MockDB.return_value
-            mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
-            mock_db_instance.update_user_settings = MagicMock()
+        await save_risktype_settings(update, context)
 
-            await save_risktype_settings(update, context)
-
-            # Verify 0.5% converted to 0.005
-            mock_db_instance.update_user_settings.assert_called_once_with(
-                user_id=1,
-                risk_type='percent',
-                risk_value=0.005
-            )
+        # Verify 0.5% converted to 0.005
+        mock_db.update_user_settings.assert_called_once_with(
+            user_id=1,
+            risk_type='percent',
+            risk_value=0.005
+        )
 
     @pytest.mark.asyncio
     async def test_setrisktype_validates_positive_value(self):
