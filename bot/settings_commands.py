@@ -13,6 +13,7 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
+from bot.conversation_utils import cancel_conversation, cancel_and_process_new_command
 
 # Conversation states
 SYMBOL_BASE, SYMBOL_PREFIX, SYMBOL_SUFFIX = range(3)
@@ -130,11 +131,6 @@ async def save_symbol_settings(update: Update, context: ContextTypes.DEFAULT_TYP
     return ConversationHandler.END
 
 
-async def cancel_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel settings change"""
-    await update.message.reply_text("❌ Settings change cancelled")
-    return ConversationHandler.END
-
 
 def get_setsymbol_handler():
     """Get the /setsymbol conversation handler"""
@@ -145,7 +141,10 @@ def get_setsymbol_handler():
             SYMBOL_PREFIX: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_symbol_suffix)],
             SYMBOL_SUFFIX: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_symbol_settings)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
 
@@ -217,7 +216,10 @@ def get_setprefix_handler():
         states={
             PREFIX_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_prefix)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
 
@@ -289,7 +291,10 @@ def get_setsuffix_handler():
         states={
             SUFFIX_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_suffix)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
 
@@ -427,7 +432,10 @@ def get_setrisktype_handler():
             RISKTYPE_TYPE: [CallbackQueryHandler(ask_risktype_value, pattern="^risktype_(fixed_usd|percent)$")],
             RISKTYPE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_risktype_settings)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
 
@@ -538,6 +546,9 @@ def get_setrr_handler():
         states={
             RR_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_rr)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )

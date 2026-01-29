@@ -43,6 +43,7 @@ from bot.order_commands import (
     closeorder_command,
     handle_order_action
 )
+from bot.conversation_utils import cancel_conversation, cancel_and_process_new_command
 from engine.symbol_resolver import SymbolResolver
 from engine.trade_validator import TradeValidator
 from engine.risk_calculator import RiskCalculator
@@ -227,7 +228,10 @@ class TradingBot:
                 CHART_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_confirm)],
                 CONFIRM: [CallbackQueryHandler(self.execute_trade)]
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
+            fallbacks=[
+                CommandHandler("cancel", cancel_conversation),
+                MessageHandler(filters.COMMAND, cancel_and_process_new_command)  # Handle any other command
+            ],
             per_message=False  # Track per user+chat, not per message
         )
 
@@ -243,7 +247,10 @@ class TradingBot:
                 CHART_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_confirm)],
                 CONFIRM: [CallbackQueryHandler(self.execute_trade)]
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
+            fallbacks=[
+                CommandHandler("cancel", cancel_conversation),
+                MessageHandler(filters.COMMAND, cancel_and_process_new_command)  # Handle any other command
+            ],
             per_message=False  # Track per user+chat, not per message
         )
 
@@ -951,10 +958,6 @@ class TradingBot:
 
         return ConversationHandler.END
 
-    async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Cancel conversation"""
-        await update.message.reply_text("Operation cancelled")
-        return ConversationHandler.END
 
 
 

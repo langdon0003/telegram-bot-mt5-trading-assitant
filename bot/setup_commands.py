@@ -13,6 +13,7 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
+from bot.conversation_utils import cancel_conversation, cancel_and_process_new_command
 
 # Conversation states for /addsetup
 SETUP_CODE, SETUP_NAME, SETUP_DESCRIPTION = range(3)
@@ -126,11 +127,6 @@ async def save_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def cancel_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel /addsetup"""
-    await update.message.reply_text("❌ Setup creation cancelled")
-    return ConversationHandler.END
-
 
 def get_addsetup_handler():
     """Get the /addsetup conversation handler"""
@@ -141,7 +137,10 @@ def get_addsetup_handler():
             SETUP_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_setup_description)],
             SETUP_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_setup)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_setup)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
 
@@ -275,7 +274,10 @@ def get_editsetup_handler():
             EDIT_FIELD: [CallbackQueryHandler(edit_ask_value)],
             EDIT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_save_value)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_setup)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
 
@@ -386,6 +388,9 @@ def get_deletesetup_handler():
             DELETE_SELECT: [CallbackQueryHandler(delete_confirm)],
             DELETE_CONFIRM: [CallbackQueryHandler(delete_execute)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_setup)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            MessageHandler(filters.COMMAND, cancel_and_process_new_command)
+        ],
         per_message=False  # Track per user+chat, not per message
     )
