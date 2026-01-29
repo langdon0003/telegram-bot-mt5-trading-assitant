@@ -262,6 +262,14 @@ class TradingBot:
                 rr_ratio = settings['default_rr_ratio'] if settings['default_rr_ratio'] is not None else 2.0
             except (KeyError, TypeError):
                 rr_ratio = 2.0
+
+            # Format risk value based on type
+            risk_value = settings['risk_value']
+            if settings['risk_type'] == 'percent':
+                risk_value_display = f"{risk_value * 100:.1f}%"
+            else:
+                risk_value_display = f"{risk_value:.1f}$"
+
             await update.message.reply_text(
                 f"⚙️ Your Settings:\n\n"
                 f"📊 Symbol:\n"
@@ -270,7 +278,7 @@ class TradingBot:
                 f"  Suffix: {settings['symbol_suffix'] or 'None'}\n\n"
                 f"💰 Risk:\n"
                 f"  Type: {settings['risk_type']}\n"
-                f"  Value: {settings['risk_value']}\n\n"
+                f"  Value: {risk_value_display}\n\n"
                 f"📈 R:R Ratio: {rr_ratio}:1\n"
                 f"  (TP auto-calculated from SL)\n\n"
                 f"Use /setsymbol, /setrisktype, /setrr to change settings"
@@ -570,9 +578,9 @@ class TradingBot:
             await update.message.reply_text(
                 f"✅ Stop Loss: {sl}\n\n"
                 f"📊 Auto-calculated TP:\n"
-                f"Risk: {risk_distance} points\n"
+                f"Risk: {risk_distance:.1f} points\n"
                 f"R:R: {rr_ratio}:1\n"
-                f"Reward: {reward_distance} points\n"
+                f"Reward: {reward_distance:.1f} points\n"
                 f"TP: {tp}\n\n"
                 f"💡 Use /setrr to change R:R ratio\n\n"
                 f"Proceeding to trade preview..."
