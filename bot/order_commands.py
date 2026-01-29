@@ -59,10 +59,10 @@ async def orders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         distance = abs(order['price_current'] - order['price_open'])
 
         message += (
-            f"🎫 Ticket: {order['ticket']}\n"
-            f"📊 {order['symbol']} - {order['type']}\n"
+            f"🎫 MT5 Ticket: `{order['ticket']}`\n"
+            f"📊 {order['type']}: {order['symbol']}\n"
             f"💰 Volume: {order['volume']} lots\n"
-            f"📍 Entry: {order['price_open']}\n"
+            f"📍 ET: {order['price_open']}\n"
             f"🛑 SL: {order['sl']}\n"
             f"🎯 TP: {order['tp']}\n"
             f"📈 Current: {order['price_current']} (±{distance:.1f})\n"
@@ -75,7 +75,7 @@ async def orders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message += "Use /orderdetail <ticket> to see details\n"
     message += "Use /closeorder <ticket> to close an order"
 
-    await update.message.reply_text(message)
+    await update.message.reply_text(message, parse_mode='Markdown')
 
 
 async def orderdetail_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
