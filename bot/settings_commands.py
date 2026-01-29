@@ -536,10 +536,20 @@ async def save_risktype(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     type_label = "Fixed USD" if risk_type == "fixed_usd" else "Percent of Balance"
 
+    # Format value display correctly
+    old_risk_type = settings['risk_type']
+    old_risk_value = settings['risk_value']
+
+    if old_risk_type == "fixed_usd":
+        value_display = f"${old_risk_value}"
+    else:  # percent
+        # Convert from decimal to percentage (0.01 -> 1%)
+        value_display = f"{old_risk_value * 100}%"
+
     await query.edit_message_text(
         f"✅ Risk type updated!\n\n"
         f"Type: {type_label}\n"
-        f"Value: {settings['risk_value']} (unchanged)\n\n"
+        f"Value: {value_display} (unchanged)\n\n"
         f"Use /setrisk to change both type and value."
     )
 
