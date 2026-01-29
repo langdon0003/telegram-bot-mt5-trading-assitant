@@ -271,7 +271,7 @@ class TradingBot:
                 f"  Value: {settings['risk_value']}\n\n"
                 f"📈 R:R Ratio: {rr_ratio}:1\n"
                 f"  (TP auto-calculated from SL)\n\n"
-                f"Use /setsymbol, /setrisk, /setrr to change settings"
+                f"Use /setsymbol, /setrisktype, /setrr to change settings"
             )
 
     async def manage_setups(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

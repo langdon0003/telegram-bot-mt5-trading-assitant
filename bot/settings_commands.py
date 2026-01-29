@@ -1,7 +1,7 @@
 """
 Settings Management Commands
 
-Handles /setsymbol and /setrisk commands for user configuration.
+Handles /setsymbol and /setrisktype commands for user configuration.
 """
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
