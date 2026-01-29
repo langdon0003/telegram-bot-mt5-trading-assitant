@@ -88,7 +88,8 @@ async def ask_symbol_suffix(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def save_symbol_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save symbol settings"""    from engine.symbol_resolver import SymbolResolver
+    """Save symbol settings"""
+    from engine.symbol_resolver import SymbolResolver
 
     suffix = update.message.text.strip()
 
@@ -173,7 +174,8 @@ async def setprefix_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def save_prefix(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save prefix setting"""    from engine.symbol_resolver import SymbolResolver
+    """Save prefix setting"""
+    from engine.symbol_resolver import SymbolResolver
 
     prefix = update.message.text.strip()
 
@@ -244,7 +246,8 @@ async def setsuffix_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def save_suffix(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save suffix setting"""    from engine.symbol_resolver import SymbolResolver
+    """Save suffix setting"""
+    from engine.symbol_resolver import SymbolResolver
 
     suffix = update.message.text.strip()
 
