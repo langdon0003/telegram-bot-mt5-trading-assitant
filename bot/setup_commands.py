@@ -78,23 +78,19 @@ async def ask_setup_description(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def save_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save the setup to database"""
-    from database.db_manager import DatabaseManager
-
     description = update.message.text.strip()
 
     if description.lower() == 'skip':
         description = None
 
-    # Get user
+    # Get shared database from bot context
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     # Check if setup code already exists
@@ -106,7 +102,6 @@ async def save_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Setup code '{context.user_data['setup_code']}' already exists!\n\n"
             f"Choose a different code."
         )
-        db.close()
         return ConversationHandler.END
 
     # Create setup
@@ -127,8 +122,6 @@ async def save_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         await update.message.reply_text(f"❌ Error creating setup: {e}")
-    finally:
-        db.close()
 
     return ConversationHandler.END
 
@@ -157,22 +150,16 @@ def get_addsetup_handler():
 
 async def editsetup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /editsetup conversation"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     setups = db.get_user_setups(user['id'])
-    db.close()
-
     if not setups:
         await update.message.reply_text(
             "No setups to edit. Use /addsetup to create one."
@@ -243,16 +230,13 @@ async def edit_ask_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def edit_save_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save edited value"""
-    from database.db_manager import DatabaseManager
-
     new_value = update.message.text.strip()
 
     if new_value.lower() == 'skip':
         new_value = None
 
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
     setup_code = context.user_data['edit_setup_code']
@@ -273,8 +257,6 @@ async def edit_save_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     db.conn.commit()
-    db.close()
-
     await update.message.reply_text(
         f"✅ Setup updated!\n\n"
         f"Code: {setup_code}\n"
@@ -302,22 +284,16 @@ def get_editsetup_handler():
 
 async def deletesetup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /deletesetup conversation"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     setups = db.get_user_setups(user['id'])
-    db.close()
-
     if not setups:
         await update.message.reply_text(
             "No setups to delete. Use /addsetup to create one."
@@ -375,8 +351,6 @@ async def delete_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def delete_execute(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Execute deletion"""
-    from database.db_manager import DatabaseManager
-
     query = update.callback_query
     await query.answer()
 
@@ -385,8 +359,7 @@ async def delete_execute(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
     setup_code = context.user_data['delete_setup_code']
@@ -398,8 +371,6 @@ async def delete_execute(update: Update, context: ContextTypes.DEFAULT_TYPE):
         (user['id'], setup_code)
     )
     db.conn.commit()
-    db.close()
-
     await query.edit_message_text(
         f"✅ Setup '{setup_code}' deleted successfully!"
     )

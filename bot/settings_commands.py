@@ -27,22 +27,16 @@ RR_INPUT = 9
 
 async def setsymbol_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /setsymbol conversation"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     settings = db.get_user_settings(user['id'])
-    db.close()
-
     await update.message.reply_text(
         f"⚙️ Symbol Configuration\n\n"
         f"Current settings:\n"
@@ -94,9 +88,7 @@ async def ask_symbol_suffix(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def save_symbol_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save symbol settings"""
-    from database.db_manager import DatabaseManager
-    from engine.symbol_resolver import SymbolResolver
+    """Save symbol settings"""    from engine.symbol_resolver import SymbolResolver
 
     suffix = update.message.text.strip()
 
@@ -114,8 +106,7 @@ async def save_symbol_settings(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
@@ -126,9 +117,6 @@ async def save_symbol_settings(update: Update, context: ContextTypes.DEFAULT_TYP
         symbol_prefix=context.user_data['symbol_prefix'],
         symbol_suffix=context.user_data['symbol_suffix']
     )
-
-    db.close()
-
     await update.message.reply_text(
         f"✅ Symbol settings saved!\n\n"
         f"Base: {context.user_data['symbol_base']}\n"
@@ -165,22 +153,16 @@ def get_setsymbol_handler():
 
 async def setprefix_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /setprefix conversation"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     settings = db.get_user_settings(user['id'])
-    db.close()
-
     await update.message.reply_text(
         f"⚙️ Configure Symbol Prefix\n\n"
         f"Current prefix: {settings['symbol_prefix'] or 'None'}\n\n"
@@ -191,9 +173,7 @@ async def setprefix_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def save_prefix(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save prefix setting"""
-    from database.db_manager import DatabaseManager
-    from engine.symbol_resolver import SymbolResolver
+    """Save prefix setting"""    from engine.symbol_resolver import SymbolResolver
 
     prefix = update.message.text.strip()
 
@@ -201,8 +181,7 @@ async def save_prefix(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prefix = ''
 
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
     settings = db.get_user_settings(user['id'])
@@ -220,9 +199,6 @@ async def save_prefix(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prefix=prefix,
         suffix=settings['symbol_suffix']
     )
-
-    db.close()
-
     await update.message.reply_text(
         f"✅ Prefix updated!\n\n"
         f"Prefix: {prefix or 'None'}\n"
@@ -248,22 +224,16 @@ def get_setprefix_handler():
 
 async def setsuffix_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /setsuffix conversation"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     settings = db.get_user_settings(user['id'])
-    db.close()
-
     await update.message.reply_text(
         f"⚙️ Configure Symbol Suffix\n\n"
         f"Current suffix: {settings['symbol_suffix'] or 'None'}\n\n"
@@ -274,9 +244,7 @@ async def setsuffix_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def save_suffix(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save suffix setting"""
-    from database.db_manager import DatabaseManager
-    from engine.symbol_resolver import SymbolResolver
+    """Save suffix setting"""    from engine.symbol_resolver import SymbolResolver
 
     suffix = update.message.text.strip()
 
@@ -284,8 +252,7 @@ async def save_suffix(update: Update, context: ContextTypes.DEFAULT_TYPE):
         suffix = ''
 
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
     settings = db.get_user_settings(user['id'])
@@ -303,9 +270,6 @@ async def save_suffix(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prefix=settings['symbol_prefix'],
         suffix=suffix
     )
-
-    db.close()
-
     await update.message.reply_text(
         f"✅ Suffix updated!\n\n"
         f"Suffix: {suffix or 'None'}\n"
@@ -331,22 +295,16 @@ def get_setsuffix_handler():
 
 async def setrisktype_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /setrisktype conversation - Configure risk type and value"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     settings = db.get_user_settings(user['id'])
-    db.close()
-
     # Format current value for display
     if settings['risk_type'] == "fixed_usd":
         current_value_display = f"${settings['risk_value']}"
@@ -395,8 +353,6 @@ async def ask_risktype_value(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def save_risktype_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save risk type and value settings"""
-    from database.db_manager import DatabaseManager
-
     try:
         risk_value = float(update.message.text)
 
@@ -425,8 +381,7 @@ async def save_risktype_settings(update: Update, context: ContextTypes.DEFAULT_T
             risk_value_display = risk_value
 
         telegram_id = update.effective_user.id
-        db = DatabaseManager()
-        db.connect()
+        db = context.application.bot_data['db']
 
         user = db.get_user_by_telegram_id(telegram_id)
 
@@ -436,9 +391,6 @@ async def save_risktype_settings(update: Update, context: ContextTypes.DEFAULT_T
             risk_type=risk_type,
             risk_value=risk_value
         )
-
-        db.close()
-
         if risk_type == "fixed_usd":
             await update.message.reply_text(
                 f"✅ Risk settings saved!\n\n"
@@ -481,22 +433,16 @@ def get_setrisktype_handler():
 
 async def setrr_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /setrr conversation"""
-    from database.db_manager import DatabaseManager
-
     telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
+    db = context.application.bot_data['db']
 
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("❌ Please use /start first")
-        db.close()
         return ConversationHandler.END
 
     settings = db.get_user_settings(user['id'])
-    db.close()
-
     # Handle sqlite3.Row object - check if column exists first
     column_missing = False
     try:
@@ -535,8 +481,6 @@ async def setrr_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def save_rr(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save R:R ratio setting"""
-    from database.db_manager import DatabaseManager
-
     try:
         rr_ratio = float(update.message.text)
 
@@ -556,8 +500,7 @@ async def save_rr(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return RR_INPUT
 
         telegram_id = update.effective_user.id
-        db = DatabaseManager()
-        db.connect()
+        db = context.application.bot_data['db']
 
         user = db.get_user_by_telegram_id(telegram_id)
 
@@ -566,9 +509,6 @@ async def save_rr(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id=user['id'],
             default_rr_ratio=rr_ratio
         )
-
-        db.close()
-
         await update.message.reply_text(
             f"✅ R:R ratio updated!\n\n"
             f"New R:R: {rr_ratio}:1\n\n"

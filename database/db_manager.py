@@ -13,7 +13,7 @@ from pathlib import Path
 class DatabaseManager:
     """
     Thread-safe database manager for SQLite.
-    
+
     Uses threading.local() to ensure each thread has its own connection,
     preventing "database is locked" errors in async/multi-threaded environments.
     """
@@ -31,7 +31,7 @@ class DatabaseManager:
     def connect(self):
         """
         Get or create thread-local database connection.
-        
+
         Returns:
             sqlite3.Connection: Thread-specific database connection
         """
@@ -43,9 +43,9 @@ class DatabaseManager:
                 timeout=30.0  # Wait up to 30s for lock instead of failing immediately
             )
             self._local.conn.row_factory = sqlite3.Row  # Enable dict-like access
-        
+
         return self._local.conn
-    
+
     @property
     def conn(self):
         """
