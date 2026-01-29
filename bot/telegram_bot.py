@@ -32,6 +32,10 @@ from bot.settings_commands import (
     get_setrisktype_handler,
     get_setrr_handler
 )
+from bot.menu_handler import (
+    show_main_menu,
+    handle_menu_callback
+)
 from bot.order_commands import (
     orders_command,
     orderdetail_command,
@@ -155,6 +159,9 @@ class TradingBot:
         app.add_handler(CommandHandler("closeorder", closeorder_command))
         app.add_handler(CallbackQueryHandler(handle_order_action, pattern="^(close_order_|refresh_order_|confirm_close_|cancel_order_action|cancel_close)"))
 
+        # Menu callbacks (must be before trade handlers to catch menu_* callbacks)
+        app.add_handler(CallbackQueryHandler(handle_menu_callback, pattern="^(menu_|action_)"))
+
         # Trade handlers
         app.add_handler(limitbuy_handler)
         app.add_handler(limitsell_handler)
@@ -163,7 +170,7 @@ class TradingBot:
         app.run_polling()
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /start command"""
+        """Handle /start command - Show main menu"""
         telegram_id = update.effective_user.id
 
         # Get or create user
@@ -177,33 +184,15 @@ class TradingBot:
             )
             self.db.create_default_settings(user_id)
 
-        await update.message.reply_text(
-            "Welcome to MT5 Trading Assistant!\n\n"
-            "📈 Trading:\n"
-            "/limitbuy - Place LIMIT BUY order\n"
-            "/limitsell - Place LIMIT SELL order\n\n"
-            "📝 Setup Management:\n"
-            "/addsetup - Add new trade setup\n"
-            "/editsetup - Edit existing setup\n"
-            "/deletesetup - Delete a setup\n"
-            "/setups - View all setups\n\n"
-            "⚙️ Configuration:\n"
-            "/setsymbol - Configure symbol settings\n"
-            "/setprefix - Configure prefix only\n"
-            "/setsuffix - Configure suffix only\n"
-            "/setrisk - Configure risk settings\n"
-            "/setrisktype - Configure risk type only\n"
-            "/setrr - Configure R:R ratio (TP auto-calc)\n"
-            "/settings - View current settings\n\n"
-            "📋 Order Management:\n"
-            "/orders - View all pending orders\n"
-            "/orderdetail <ticket> - View order details\n"
-            "/closeorder <ticket> - Close pending order\n\n"
-            "🔧 MT5 Connection:\n"
-            "/mt5connection - Check MT5 status\n"
-            "/reconnectmt5 - Reconnect to MT5\n\n"
-            "/cancel - Cancel current operation"
-        )
+            # Welcome message for new users
+            await update.message.reply_text(
+                f"👋 Welcome to MT5 Trading Assistant!\n\n"
+                f"Hi {update.effective_user.first_name}, your account has been created.\n\n"
+                f"Let's get started! 🚀"
+            )
+
+        # Show main menu
+        await show_main_menu(update, context)
 
     async def settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /settings command"""
