@@ -6,7 +6,16 @@ Test main menu display and callback routing.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram import Update, CallbackQuery, Message, User, Chat, BotCommand
+from telegram import (
+    Update,
+    CallbackQuery,
+    Message,
+    User,
+    Chat,
+    BotCommand,
+    ReplyKeyboardMarkup,
+    KeyboardButton
+)
 from telegram.ext import ContextTypes
 
 
@@ -197,7 +206,7 @@ class TestMenuCallbacks:
         """
         GIVEN: User clicks action button (e.g., action_limitbuy)
         WHEN: handle_menu_callback is called
-        THEN: Should show instruction to use command
+        THEN: Should show ReplyKeyboard with command button
         """
         from bot.menu_handler import handle_menu_callback
 
@@ -206,16 +215,37 @@ class TestMenuCallbacks:
         update.callback_query.data = "action_limitbuy"
         update.callback_query.answer = AsyncMock()
         update.callback_query.edit_message_text = AsyncMock()
+        update.callback_query.message = MagicMock(spec=Message)
+        update.callback_query.message.reply_text = AsyncMock()
 
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
 
         await handle_menu_callback(update, context)
 
-        # Verify instruction was shown
-        call_args = update.callback_query.edit_message_text.call_args
-        message = call_args[0][0]
-        assert "/limitbuy" in message
-        assert "/start" in message
+        # Verify menu message was edited
+        edit_call_args = update.callback_query.edit_message_text.call_args
+        message = edit_call_args[0][0]
+        assert "Limit Buy Order" in message
+        assert "Tap the button below" in message
+
+        # Verify ReplyKeyboard was sent
+        update.callback_query.message.reply_text.assert_called_once()
+        reply_call = update.callback_query.message.reply_text.call_args
+
+        # Check message
+        assert "Quick action" in reply_call[0][0]
+
+        # Check ReplyKeyboard
+        reply_markup = reply_call[1]['reply_markup']
+        assert reply_markup is not None
+        assert reply_markup.one_time_keyboard is True
+        assert reply_markup.resize_keyboard is True
+
+        # Check keyboard has /limitbuy button
+        keyboard = reply_markup.keyboard
+        assert len(keyboard) == 1
+        assert len(keyboard[0]) == 1
+        assert keyboard[0][0].text == "/limitbuy"
 
 
 class TestBotMenuSetup:

@@ -5,7 +5,14 @@ Handles the main menu shown after /start command.
 Provides quick access to common trading actions.
 """
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove
+)
 from telegram.ext import ContextTypes, ConversationHandler
 
 
@@ -150,9 +157,38 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     # Action callbacks - route to commands
     elif data.startswith("action_"):
         command = data.replace("action_", "")
+
+        # Get friendly command name
+        command_names = {
+            "limitbuy": "🟢 Limit Buy Order",
+            "limitsell": "🔴 Limit Sell Order",
+            "setrisktype": "📈 Risk Settings",
+            "setrr": "🎯 R:R Ratio",
+            "setsymbol": "📊 Symbol Config",
+            "settings": "⚙️ View Settings"
+        }
+        friendly_name = command_names.get(command, command.title())
+
+        # Create reply keyboard with command button
+        keyboard = [[KeyboardButton(f"/{command}")]]
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard,
+            one_time_keyboard=True,  # Auto-hide after use
+            resize_keyboard=True,     # Compact size
+            input_field_placeholder=f"Tap to send /{command}"
+        )
+
+        # Edit menu message
         await query.edit_message_text(
-            f"Please use /{command} command to proceed.\n\n"
-            "Use /start to return to menu."
+            f"*{friendly_name}*\n\n"
+            f"👇 Tap the button below to start:",
+            parse_mode='Markdown'
+        )
+
+        # Send keyboard
+        await query.message.reply_text(
+            f"Quick action:",
+            reply_markup=reply_markup
         )
 
 
