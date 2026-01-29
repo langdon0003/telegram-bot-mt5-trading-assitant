@@ -157,7 +157,6 @@ class TradingBot:
                 SYMBOL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_entry)],
                 ENTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_stop_loss)],
                 STOP_LOSS: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_take_profit)],
-                TAKE_PROFIT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.show_preview)],
                 EMOTION: [CallbackQueryHandler(self.ask_setup)],
                 SETUP: [CallbackQueryHandler(self.ask_chart_url)],
                 CHART_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_confirm)],
@@ -174,7 +173,6 @@ class TradingBot:
                 SYMBOL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_entry)],
                 ENTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_stop_loss)],
                 STOP_LOSS: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_take_profit)],
-                TAKE_PROFIT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.show_preview)],
                 EMOTION: [CallbackQueryHandler(self.ask_setup)],
                 SETUP: [CallbackQueryHandler(self.ask_chart_url)],
                 CHART_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_confirm)],
@@ -596,9 +594,6 @@ class TradingBot:
     async def show_preview(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show trade preview and ask for emotion"""
         try:
-            # TP is already calculated and stored in context.user_data['tp']
-            # No need to get from user input anymore
-
             # Get trade details
             entry = context.user_data['entry']
             sl = context.user_data['sl']
@@ -665,9 +660,12 @@ class TradingBot:
 
             return EMOTION
 
-        except ValueError:
-            await update.message.reply_text("Invalid price. Please enter a number:")
-            return TAKE_PROFIT
+        except Exception as e:
+            logger.error(f"Error in show_preview: {e}")
+            await update.message.reply_text(
+                "❌ Error showing preview. Please try again or /cancel"
+            )
+            return ConversationHandler.END
 
     async def ask_setup(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Ask for setup selection"""
