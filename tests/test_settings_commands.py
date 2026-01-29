@@ -237,8 +237,8 @@ class TestSetRiskTypeFlow:
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'fixed_usd'}
 
-        # Mock database
-        with patch('bot.settings_commands.DatabaseManager') as MockDB:
+        # Mock database (patch at import source, not module level)
+        with patch('database.db_manager.DatabaseManager') as MockDB:
             mock_db_instance = MockDB.return_value
             mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
             mock_db_instance.update_user_settings = MagicMock()
@@ -280,7 +280,7 @@ class TestSetRiskTypeFlow:
         context.user_data = {'risk_type': 'percent'}
 
         # Mock database
-        with patch('bot.settings_commands.DatabaseManager') as MockDB:
+        with patch('database.db_manager.DatabaseManager') as MockDB:
             mock_db_instance = MockDB.return_value
             mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
             mock_db_instance.update_user_settings = MagicMock()
@@ -319,7 +319,7 @@ class TestSetRiskTypeFlow:
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'percent'}
 
-        with patch('bot.settings_commands.DatabaseManager') as MockDB:
+        with patch('database.db_manager.DatabaseManager') as MockDB:
             mock_db_instance = MockDB.return_value
             mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
             mock_db_instance.update_user_settings = MagicMock()
