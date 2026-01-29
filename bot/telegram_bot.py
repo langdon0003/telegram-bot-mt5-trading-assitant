@@ -93,9 +93,58 @@ class TradingBot:
         # Connection will be established on first trade execution
         logger.info("Bot initialized. MT5 connection will be established when needed.")
 
+    async def setup_bot_menu(self, app):
+        """
+        Set up bot menu button and commands list.
+
+        This creates the persistent "Menu" button at bottom-left
+        and defines the command list shown when user clicks it.
+        """
+        from telegram import BotCommand, MenuButtonCommands
+
+        # Define bot commands shown in menu
+        commands = [
+            # Trading
+            BotCommand("start", "📱 Main menu"),
+            BotCommand("limitbuy", "🟢 Place LIMIT BUY order"),
+            BotCommand("limitsell", "🔴 Place LIMIT SELL order"),
+
+            # Orders
+            BotCommand("orders", "📋 View pending orders"),
+            BotCommand("orderdetail", "🔍 View order details"),
+            BotCommand("closeorder", "❌ Close pending order"),
+
+            # Settings
+            BotCommand("settings", "⚙️ View current settings"),
+            BotCommand("setrisktype", "📈 Configure risk settings"),
+            BotCommand("setrr", "🎯 Configure R:R ratio"),
+            BotCommand("setsymbol", "📊 Configure symbol"),
+
+            # Setup Management
+            BotCommand("addsetup", "➕ Add trade setup"),
+            BotCommand("setups", "📝 View all setups"),
+
+            # MT5
+            BotCommand("mt5connection", "🔧 Check MT5 status"),
+            BotCommand("reconnectmt5", "🔌 Reconnect to MT5"),
+
+            # Help
+            BotCommand("cancel", "🚫 Cancel operation"),
+        ]
+
+        # Set commands
+        await app.bot.set_my_commands(commands)
+
+        # Set menu button to show commands
+        await app.bot.set_chat_menu_button(
+            menu_button=MenuButtonCommands()
+        )
+
+        logger.info("✅ Menu button and commands configured")
+
     def run(self):
         """Start the bot"""
-        app = Application.builder().token(self.token).build()
+        app = Application.builder().token(self.token).post_init(self.setup_bot_menu).build()
 
         # Store MT5 adapter in bot_data for shared access
         app.bot_data['mt5_adapter'] = self.mt5_adapter
