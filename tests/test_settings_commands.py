@@ -236,7 +236,7 @@ class TestSetRiskTypeFlow:
         # Mock context with risk_type set to fixed_usd
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'fixed_usd'}
-        
+
         # Mock database from bot_data
         mock_db = MagicMock()
         mock_db.get_user_by_telegram_id.return_value = {'id': 1}
@@ -278,7 +278,7 @@ class TestSetRiskTypeFlow:
         # Mock context with risk_type set to percent
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'percent'}
-        
+
         # Mock database from bot_data
         mock_db = MagicMock()
         mock_db.get_user_by_telegram_id.return_value = {'id': 1}
@@ -318,7 +318,7 @@ class TestSetRiskTypeFlow:
 
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {'risk_type': 'percent'}
-        
+
         # Mock database from bot_data
         mock_db = MagicMock()
         mock_db.get_user_by_telegram_id.return_value = {'id': 1}
