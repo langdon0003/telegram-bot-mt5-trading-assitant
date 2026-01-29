@@ -156,7 +156,8 @@ def get_setsymbol_handler():
             SYMBOL_PREFIX: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_symbol_suffix)],
             SYMBOL_SUFFIX: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_symbol_settings)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        per_message=False  # Track per user+chat, not per message
     )
 
 
@@ -238,7 +239,8 @@ def get_setprefix_handler():
         states={
             PREFIX_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_prefix)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        per_message=False  # Track per user+chat, not per message
     )
 
 
@@ -320,7 +322,8 @@ def get_setsuffix_handler():
         states={
             SUFFIX_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_suffix)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        per_message=False  # Track per user+chat, not per message
     )
 
 
@@ -469,7 +472,8 @@ def get_setrisktype_handler():
             RISKTYPE_TYPE: [CallbackQueryHandler(ask_risktype_value, pattern="^risktype_(fixed_usd|percent)$")],
             RISKTYPE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_risktype_settings)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        per_message=False  # Track per user+chat, not per message
     )
 
 
@@ -591,5 +595,6 @@ def get_setrr_handler():
         states={
             RR_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_rr)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
+        per_message=False  # Track per user+chat, not per message
     )

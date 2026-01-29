@@ -163,7 +163,8 @@ class TradingBot:
                 CHART_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_confirm)],
                 CONFIRM: [CallbackQueryHandler(self.execute_trade)]
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)]
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_message=False  # Track per user+chat, not per message
         )
 
         # Conversation handler for /limitsell
@@ -179,7 +180,8 @@ class TradingBot:
                 CHART_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ask_confirm)],
                 CONFIRM: [CallbackQueryHandler(self.execute_trade)]
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)]
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_message=False  # Track per user+chat, not per message
         )
 
         # Basic handlers

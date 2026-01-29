@@ -148,7 +148,8 @@ def get_addsetup_handler():
             SETUP_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_setup_description)],
             SETUP_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_setup)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_setup)]
+        fallbacks=[CommandHandler("cancel", cancel_setup)],
+        per_message=False  # Track per user+chat, not per message
     )
 
 
@@ -292,7 +293,8 @@ def get_editsetup_handler():
             EDIT_FIELD: [CallbackQueryHandler(edit_ask_value)],
             EDIT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_save_value)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_setup)]
+        fallbacks=[CommandHandler("cancel", cancel_setup)],
+        per_message=False  # Track per user+chat, not per message
     )
 
 
@@ -413,5 +415,6 @@ def get_deletesetup_handler():
             DELETE_SELECT: [CallbackQueryHandler(delete_confirm)],
             DELETE_CONFIRM: [CallbackQueryHandler(delete_execute)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_setup)]
+        fallbacks=[CommandHandler("cancel", cancel_setup)],
+        per_message=False  # Track per user+chat, not per message
     )
