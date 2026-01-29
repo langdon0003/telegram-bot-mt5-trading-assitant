@@ -2,14 +2,21 @@
 Database Manager
 
 Handles SQLite database initialization and operations.
+Thread-safe implementation using threading.local() for concurrent access.
 """
 
 import sqlite3
+import threading
 from pathlib import Path
 
 
 class DatabaseManager:
-    """Manages SQLite database connection and initialization"""
+    """
+    Thread-safe database manager for SQLite.
+    
+    Uses threading.local() to ensure each thread has its own connection,
+    preventing "database is locked" errors in async/multi-threaded environments.
+    """
 
     def __init__(self, db_path: str = "trading_bot.db"):
         """
@@ -19,13 +26,33 @@ class DatabaseManager:
             db_path: Path to SQLite database file
         """
         self.db_path = db_path
-        self.conn = None
+        self._local = threading.local()
 
     def connect(self):
-        """Establish database connection"""
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row  # Enable dict-like access
-        return self.conn
+        """
+        Get or create thread-local database connection.
+        
+        Returns:
+            sqlite3.Connection: Thread-specific database connection
+        """
+        # Check if current thread already has a connection
+        if not hasattr(self._local, 'conn') or self._local.conn is None:
+            self._local.conn = sqlite3.connect(
+                self.db_path,
+                check_same_thread=False,  # Allow usage across threads
+                timeout=30.0  # Wait up to 30s for lock instead of failing immediately
+            )
+            self._local.conn.row_factory = sqlite3.Row  # Enable dict-like access
+        
+        return self._local.conn
+    
+    @property
+    def conn(self):
+        """
+        Get current thread's database connection.
+        Automatically creates connection if not exists.
+        """
+        return self.connect()
 
     def initialize_schema(self):
         """Create tables from schema.sql if they don't exist"""
@@ -39,9 +66,10 @@ class DatabaseManager:
         self.conn.commit()
 
     def close(self):
-        """Close database connection"""
-        if self.conn:
-            self.conn.close()
+        """Close current thread's database connection"""
+        if hasattr(self._local, 'conn') and self._local.conn:
+            self._local.conn.close()
+            self._local.conn = None
 
     def get_user_by_telegram_id(self, telegram_id: int):
         """Get user by Telegram ID"""
