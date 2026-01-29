@@ -18,6 +18,7 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
+from telegram.error import TimedOut, NetworkError, RetryAfter
 
 from bot.trade_command_builder import TradeCommandBuilder
 from bot.setup_commands import (
@@ -142,13 +143,72 @@ class TradingBot:
 
         logger.info("✅ Menu button and commands configured")
 
+    async def error_handler(self, update: object, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Handle errors that occur during update processing.
+        
+        Catches network timeouts, rate limits, and other errors to prevent bot crashes.
+        """
+        error = context.error
+        
+        # Log the error
+        logger.error(f"Exception while handling update: {error}", exc_info=context.error)
+        
+        # Handle specific error types
+        if isinstance(error, TimedOut):
+            logger.warning("⚠️ Telegram API timeout - network may be slow")
+            # Don't notify user - this is transient, message will be retried
+            return
+            
+        if isinstance(error, RetryAfter):
+            retry_after = error.retry_after
+            logger.warning(f"⚠️ Rate limited by Telegram. Retry after {retry_after}s")
+            # Bot will automatically retry after the specified time
+            return
+            
+        if isinstance(error, NetworkError):
+            logger.warning(f"⚠️ Network error: {error}")
+            # Don't notify user - transient network issues
+            return
+        
+        # For other errors, try to notify the user if we have an update with message
+        try:
+            if update and hasattr(update, 'effective_message') and update.effective_message:
+                await update.effective_message.reply_text(
+                    "⚠️ An error occurred while processing your request. Please try again."
+                )
+        except Exception as e:
+            logger.error(f"Failed to send error message to user: {e}")
+
     def run(self):
         """Start the bot"""
-        app = Application.builder().token(self.token).post_init(self.setup_bot_menu).build()
+        from telegram.request import HTTPXRequest
+        
+        # Configure request with longer timeouts and automatic retry
+        request = HTTPXRequest(
+            connect_timeout=30.0,  # 30 seconds to establish connection
+            read_timeout=30.0,     # 30 seconds to read response
+            write_timeout=30.0,    # 30 seconds to send data
+            pool_timeout=30.0,     # 30 seconds to get connection from pool
+            http_version="1.1"     # HTTP/1.1 for better compatibility
+        )
+        
+        app = Application.builder()\
+            .token(self.token)\
+            .post_init(self.setup_bot_menu)\
+            .request(request)\
+            .connect_timeout(30.0)\
+            .read_timeout(30.0)\
+            .write_timeout(30.0)\
+            .pool_timeout(30.0)\
+            .build()
 
         # Store MT5 adapter in bot_data for shared access
         app.bot_data['mt5_adapter'] = self.mt5_adapter
         app.bot_data['db'] = self.db
+        
+        # Register error handler
+        app.add_error_handler(self.error_handler)
 
         # Conversation handler for /limitbuy
         limitbuy_handler = ConversationHandler(
