@@ -22,7 +22,6 @@ class TradeCommandBuilder:
         self,
         user_id: int,
         account_id: int,
-        telegram_id: int,
         order_type: str,
         symbol: str,
         entry_price: float,
@@ -32,7 +31,8 @@ class TradeCommandBuilder:
         risk_usd: float,
         emotion: str,
         setup_code: str,
-        chart_url: str | None
+        chart_url: str | None,
+        telegram_id: int = None
     ) -> dict:
         """
         Build trade command JSON.

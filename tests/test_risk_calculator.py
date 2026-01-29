@@ -35,8 +35,11 @@ class TestRiskCalculator:
     def test_calculate_volume_fixed_usd_gold(self):
         """
         GIVEN: User risks $50 USD on XAU/USD trade
-        WHEN: Entry=2000.00, SL=1995.00 ($5 distance), pip_value=$1/lot
-        THEN: Volume should be 10.0 lots (50 / 5)
+        WHEN: Entry=2000.00, SL=1995.00 ($5 distance), contract_size=100
+        THEN: Volume should be 0.1 lots (50 / (5 × 100))
+
+        Gold contract = 100 oz
+        Formula: Volume = Risk / (Distance × Contract Size)
         """
         from engine.risk_calculator import RiskCalculator
 
@@ -51,7 +54,7 @@ class TestRiskCalculator:
             volume_step=0.01
         )
 
-        assert volume == 10.0
+        assert volume == 0.1
 
     def test_calculate_volume_percent_balance(self):
         """

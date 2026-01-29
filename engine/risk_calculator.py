@@ -88,10 +88,10 @@ class RiskCalculator:
         #   Distance = 0.005 (50 pips), Volume = 100 / (50 × 10) = 0.20 Lot
 
         if tick_size >= 0.01:  # Gold-like (tick_size = 0.01)
-            # Using simplified Gold formula: Volume = Risk / (Distance × 100)
-            # The pip_value of 1.0 for Gold means $1 per lot per $1 move
-            # So: Risk / (Distance × 100) = Risk / (Distance × 100 × pip_value)
-            # When pip_value = 1.0: Risk / (Distance × 100)
+            # Gold formula: Volume = Risk / (Distance × Contract Size)
+            # Gold contract size = 100 oz
+            # Example: Risk $50, Distance $5, contract_size 100
+            #          Volume = 50 / (5 × 100) = 0.1 lots
             raw_volume = risk_usd / (sl_distance_price * 100)
         else:  # Forex-like (tick_size = 0.00001 or 0.0001)
             # pip_value is per pip (10 points for 5-digit, 1 point for 4-digit)
