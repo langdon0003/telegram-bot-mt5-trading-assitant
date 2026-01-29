@@ -206,12 +206,7 @@ class TradingBot:
         # Configure rate limiter to prevent hitting Telegram limits
         # Default Telegram limits: 30 messages/second, but we use conservative limits
         rate_limiter = AIORateLimiter(
-            max_retries=3,              # Retry up to 3 times on rate limit
-            overall_max_rate=20,        # Max 20 requests/second overall (conservative)
-            overall_time_period=1.0,    # Per 1 second
-            group_max_rate=20,          # Max 20 messages/minute to groups
-            group_time_period=60.0,     # Per 60 seconds
-            max_chat_delay=0.05         # 50ms delay between messages to same chat
+            max_retries=3                # Retry up to 3 times on rate limit
         )
 
         app = Application.builder()\
