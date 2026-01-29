@@ -27,7 +27,6 @@ from bot.setup_commands import (
 )
 from bot.settings_commands import (
     get_setsymbol_handler,
-    get_setrisk_handler,
     get_setprefix_handler,
     get_setsuffix_handler,
     get_setrisktype_handler,
@@ -145,7 +144,6 @@ class TradingBot:
 
         # Settings management
         app.add_handler(get_setsymbol_handler())
-        app.add_handler(get_setrisk_handler())
         app.add_handler(get_setprefix_handler())
         app.add_handler(get_setsuffix_handler())
         app.add_handler(get_setrisktype_handler())

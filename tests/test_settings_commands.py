@@ -1,10 +1,13 @@
 """
 Tests for Settings Commands
 
-Test risk value formatting and display logic used in /setrisk and /setrisktype commands.
+Test risk value formatting and display logic used in /setrisktype command.
 """
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from telegram import Update, CallbackQuery, Message, User, Chat
+from telegram.ext import ContextTypes
 
 
 def format_risk_value_display(risk_type: str, risk_value: float) -> str:
@@ -177,28 +180,242 @@ class TestEdgeCases:
 
 
 class TestRiskTypeUpdate:
-    """Test the /setrisktype command behavior"""
+    """Test the /setrisktype command full flow (type + value)"""
 
-    def test_update_type_only_keeps_value(self):
+    def test_convert_percent_input_to_decimal(self):
         """
-        GIVEN: User has risk_type="fixed_usd", risk_value=100.0
-        WHEN: User changes type to "percent" using /setrisktype
-        THEN:
-            - risk_type should change to "percent"
-            - risk_value should remain 100.0 (WARNING: now interpreted as 10000%!)
-            - This is expected behavior - value doesn't auto-convert
+        GIVEN: User enters "1" for 1% risk
+        WHEN: Convert to decimal for storage
+        THEN: Should store as 0.01 in database
         """
-        # Initial state
-        old_type = "fixed_usd"
-        old_value = 100.0
+        user_input = 1.0  # User types "1" for 1%
+        stored_value = user_input / 100.0
+        assert stored_value == 0.01
 
-        # User changes type (value unchanged)
-        new_type = "percent"
-        new_value = old_value  # Keep same value
+    def test_convert_half_percent_to_decimal(self):
+        """
+        GIVEN: User enters "0.5" for 0.5% risk
+        WHEN: Convert to decimal for storage
+        THEN: Should store as 0.005 in database
+        """
+        user_input = 0.5  # User types "0.5" for 0.5%
+        stored_value = user_input / 100.0
+        assert stored_value == 0.005
 
-        # Display NEW type with SAME value
-        # WARNING: 100.0 now means 10000% when type is "percent"!
-        display = format_risk_value_display(new_type, new_value)
-        assert display == "10000.0%"  # This is technically correct but unusual
+    def test_fixed_usd_no_conversion(self):
+        """
+        GIVEN: User enters "100" for $100 risk
+        WHEN: Store fixed USD value
+        THEN: Should store as 100.0 (no conversion needed)
+        """
+        user_input = 100.0  # User types "100"
+        stored_value = user_input  # No conversion for fixed_usd
+        assert stored_value == 100.0
 
-        # Note: Users should use /setrisk to properly set both type and value together
+
+class TestSetRiskTypeFlow:
+    """Test the complete /setrisktype command flow"""
+
+    @pytest.mark.asyncio
+    async def test_setrisktype_fixed_usd_flow(self):
+        """
+        GIVEN: User runs /setrisktype
+        WHEN: Selects Fixed USD and enters 100
+        THEN: Should save risk_type="fixed_usd", risk_value=100.0
+        """
+        from bot.settings_commands import save_risktype_settings
+
+        # Mock update with user input "100"
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "100"
+        update.message.reply_text = AsyncMock()
+        update.effective_user = MagicMock(spec=User)
+        update.effective_user.id = 12345
+
+        # Mock context with risk_type set to fixed_usd
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'risk_type': 'fixed_usd'}
+
+        # Mock database
+        with patch('bot.settings_commands.DatabaseManager') as MockDB:
+            mock_db_instance = MockDB.return_value
+            mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
+            mock_db_instance.update_user_settings = MagicMock()
+
+            result = await save_risktype_settings(update, context)
+
+            # Verify database was updated correctly
+            mock_db_instance.update_user_settings.assert_called_once_with(
+                user_id=1,
+                risk_type='fixed_usd',
+                risk_value=100.0  # No conversion for fixed_usd
+            )
+
+            # Verify success message sent
+            update.message.reply_text.assert_called_once()
+            call_args = update.message.reply_text.call_args[0][0]
+            assert "✅ Risk settings saved!" in call_args
+            assert "$100" in call_args
+
+    @pytest.mark.asyncio
+    async def test_setrisktype_percent_flow(self):
+        """
+        GIVEN: User runs /setrisktype
+        WHEN: Selects Percent and enters 1 (for 1%)
+        THEN: Should save risk_type="percent", risk_value=0.01
+        """
+        from bot.settings_commands import save_risktype_settings
+
+        # Mock update with user input "1"
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "1"
+        update.message.reply_text = AsyncMock()
+        update.effective_user = MagicMock(spec=User)
+        update.effective_user.id = 12345
+
+        # Mock context with risk_type set to percent
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'risk_type': 'percent'}
+
+        # Mock database
+        with patch('bot.settings_commands.DatabaseManager') as MockDB:
+            mock_db_instance = MockDB.return_value
+            mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
+            mock_db_instance.update_user_settings = MagicMock()
+
+            result = await save_risktype_settings(update, context)
+
+            # Verify database was updated correctly
+            mock_db_instance.update_user_settings.assert_called_once_with(
+                user_id=1,
+                risk_type='percent',
+                risk_value=0.01  # Converted from 1% to 0.01
+            )
+
+            # Verify success message sent
+            update.message.reply_text.assert_called_once()
+            call_args = update.message.reply_text.call_args[0][0]
+            assert "✅ Risk settings saved!" in call_args
+            assert "1%" in call_args
+
+    @pytest.mark.asyncio
+    async def test_setrisktype_percent_half_percent(self):
+        """
+        GIVEN: User runs /setrisktype
+        WHEN: Selects Percent and enters 0.5 (for 0.5%)
+        THEN: Should save risk_type="percent", risk_value=0.005
+        """
+        from bot.settings_commands import save_risktype_settings
+
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "0.5"
+        update.message.reply_text = AsyncMock()
+        update.effective_user = MagicMock(spec=User)
+        update.effective_user.id = 12345
+
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'risk_type': 'percent'}
+
+        with patch('bot.settings_commands.DatabaseManager') as MockDB:
+            mock_db_instance = MockDB.return_value
+            mock_db_instance.get_user_by_telegram_id.return_value = {'id': 1}
+            mock_db_instance.update_user_settings = MagicMock()
+
+            await save_risktype_settings(update, context)
+
+            # Verify 0.5% converted to 0.005
+            mock_db_instance.update_user_settings.assert_called_once_with(
+                user_id=1,
+                risk_type='percent',
+                risk_value=0.005
+            )
+
+    @pytest.mark.asyncio
+    async def test_setrisktype_validates_positive_value(self):
+        """
+        GIVEN: User enters negative or zero value
+        WHEN: Save risk settings
+        THEN: Should reject and ask to try again
+        """
+        from bot.settings_commands import save_risktype_settings
+
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "-10"
+        update.message.reply_text = AsyncMock()
+
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'risk_type': 'fixed_usd'}
+
+        result = await save_risktype_settings(update, context)
+
+        # Should ask to try again (returns RISKTYPE_VALUE state)
+        from bot.settings_commands import RISKTYPE_VALUE
+        assert result == RISKTYPE_VALUE
+
+        # Should show error message
+        update.message.reply_text.assert_called_once()
+        call_args = update.message.reply_text.call_args[0][0]
+        assert "❌" in call_args
+        assert "positive" in call_args.lower()
+
+    @pytest.mark.asyncio
+    async def test_setrisktype_validates_percent_max_100(self):
+        """
+        GIVEN: User enters percentage > 100
+        WHEN: Save risk settings
+        THEN: Should reject and ask to try again
+        """
+        from bot.settings_commands import save_risktype_settings
+
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "150"
+        update.message.reply_text = AsyncMock()
+
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'risk_type': 'percent'}
+
+        result = await save_risktype_settings(update, context)
+
+        # Should ask to try again
+        from bot.settings_commands import RISKTYPE_VALUE
+        assert result == RISKTYPE_VALUE
+
+        # Should show error message
+        update.message.reply_text.assert_called_once()
+        call_args = update.message.reply_text.call_args[0][0]
+        assert "❌" in call_args
+        assert "100" in call_args
+
+    @pytest.mark.asyncio
+    async def test_setrisktype_validates_numeric_input(self):
+        """
+        GIVEN: User enters non-numeric text
+        WHEN: Save risk settings
+        THEN: Should reject and ask to try again
+        """
+        from bot.settings_commands import save_risktype_settings
+
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "abc"
+        update.message.reply_text = AsyncMock()
+
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'risk_type': 'fixed_usd'}
+
+        result = await save_risktype_settings(update, context)
+
+        # Should ask to try again
+        from bot.settings_commands import RISKTYPE_VALUE
+        assert result == RISKTYPE_VALUE
+
+        # Should show error message
+        update.message.reply_text.assert_called_once()
+        call_args = update.message.reply_text.call_args[0][0]
+        assert "❌" in call_args
+        assert "Invalid number" in call_args

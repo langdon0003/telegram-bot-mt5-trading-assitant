@@ -16,11 +16,11 @@ from telegram.ext import (
 
 # Conversation states
 SYMBOL_BASE, SYMBOL_PREFIX, SYMBOL_SUFFIX = range(3)
-RISK_TYPE, RISK_VALUE = range(3, 5)
 PREFIX_INPUT = 5
 SUFFIX_INPUT = 6
-RISKTYPE_SELECT = 7
-RR_INPUT = 8
+RISKTYPE_TYPE = 7
+RISKTYPE_VALUE = 8
+RR_INPUT = 9
 
 
 # ==================== SET SYMBOL ====================
@@ -155,155 +155,6 @@ def get_setsymbol_handler():
             SYMBOL_BASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_symbol_prefix)],
             SYMBOL_PREFIX: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_symbol_suffix)],
             SYMBOL_SUFFIX: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_symbol_settings)]
-        },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
-    )
-
-
-# ==================== SET RISK ====================
-
-async def setrisk_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start /setrisk conversation"""
-    from database.db_manager import DatabaseManager
-
-    telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
-
-    user = db.get_user_by_telegram_id(telegram_id)
-
-    if not user:
-        await update.message.reply_text("❌ Please use /start first")
-        db.close()
-        return ConversationHandler.END
-
-    settings = db.get_user_settings(user['id'])
-    db.close()
-
-    keyboard = [
-        [InlineKeyboardButton("💵 Fixed USD", callback_data="risk_fixed_usd")],
-        [InlineKeyboardButton("📊 Percent of Balance", callback_data="risk_percent")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        f"⚙️ Risk Configuration\n\n"
-        f"Current settings:\n"
-        f"Type: {settings['risk_type']}\n"
-        f"Value: {settings['risk_value']}\n\n"
-        f"Select risk type:",
-        reply_markup=reply_markup
-    )
-
-    return RISK_TYPE
-
-
-async def ask_risk_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Ask for risk value"""
-    query = update.callback_query
-    await query.answer()
-
-    # Extract risk type from callback data (format: "risk_fixed_usd" or "risk_percent")
-    # Make sure we only match "risk_" prefix, not "risktype_"
-    if not query.data.startswith("risk_"):
-        await query.edit_message_text("❌ Invalid action")
-        return ConversationHandler.END
-
-    risk_type = query.data.replace("risk_", "", 1)  # Replace only first occurrence
-    context.user_data['risk_type'] = risk_type
-
-    if risk_type == "fixed_usd":
-        await query.edit_message_text(
-            f"Risk Type: Fixed USD\n\n"
-            f"Enter risk amount in USD (e.g., 100):"
-        )
-    else:  # percent
-        await query.edit_message_text(
-            f"Risk Type: Percent of Balance\n\n"
-            f"Enter risk percentage (e.g., 1 for 1%, 0.5 for 0.5%):"
-        )
-
-    return RISK_VALUE
-
-
-async def save_risk_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save risk settings"""
-    from database.db_manager import DatabaseManager
-
-    try:
-        risk_value = float(update.message.text)
-
-        if risk_value <= 0:
-            await update.message.reply_text(
-                "❌ Risk value must be positive.\n\n"
-                "Try again:"
-            )
-            return RISK_VALUE
-
-        risk_type = context.user_data['risk_type']
-
-        # Validate percent range
-        if risk_type == "percent" and risk_value > 100:
-            await update.message.reply_text(
-                "❌ Percentage cannot exceed 100%.\n\n"
-                "Try again:"
-            )
-            return RISK_VALUE
-
-        # Convert percent to decimal if needed
-        if risk_type == "percent":
-            risk_value_display = risk_value
-            risk_value = risk_value / 100.0  # Store as decimal (e.g., 0.01 for 1%)
-        else:
-            risk_value_display = risk_value
-
-        telegram_id = update.effective_user.id
-        db = DatabaseManager()
-        db.connect()
-
-        user = db.get_user_by_telegram_id(telegram_id)
-
-        # Update settings
-        db.update_user_settings(
-            user_id=user['id'],
-            risk_type=risk_type,
-            risk_value=risk_value
-        )
-
-        db.close()
-
-        if risk_type == "fixed_usd":
-            await update.message.reply_text(
-                f"✅ Risk settings saved!\n\n"
-                f"Type: Fixed USD\n"
-                f"Amount: ${risk_value_display}\n\n"
-                f"Every trade will risk ${risk_value_display} USD"
-            )
-        else:
-            await update.message.reply_text(
-                f"✅ Risk settings saved!\n\n"
-                f"Type: Percent of Balance\n"
-                f"Percentage: {risk_value_display}%\n\n"
-                f"Every trade will risk {risk_value_display}% of your account balance"
-            )
-
-        return ConversationHandler.END
-
-    except ValueError:
-        await update.message.reply_text(
-            "❌ Invalid number.\n\n"
-            "Try again:"
-        )
-        return RISK_VALUE
-
-
-def get_setrisk_handler():
-    """Get the /setrisk conversation handler"""
-    return ConversationHandler(
-        entry_points=[CommandHandler("setrisk", setrisk_start)],
-        states={
-            RISK_TYPE: [CallbackQueryHandler(ask_risk_value, pattern="^risk_(fixed_usd|percent)$")],
-            RISK_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_risk_settings)]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)]
     )
@@ -476,7 +327,7 @@ def get_setsuffix_handler():
 # ==================== SET RISK TYPE ====================
 
 async def setrisktype_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start /setrisktype conversation"""
+    """Start /setrisktype conversation - Configure risk type and value"""
     from database.db_manager import DatabaseManager
 
     telegram_id = update.effective_user.id
@@ -493,6 +344,12 @@ async def setrisktype_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = db.get_user_settings(user['id'])
     db.close()
 
+    # Format current value for display
+    if settings['risk_type'] == "fixed_usd":
+        current_value_display = f"${settings['risk_value']}"
+    else:  # percent
+        current_value_display = f"{settings['risk_value'] * 100}%"
+
     keyboard = [
         [InlineKeyboardButton("💵 Fixed USD", callback_data="risktype_fixed_usd")],
         [InlineKeyboardButton("📊 Percent of Balance", callback_data="risktype_percent")]
@@ -500,60 +357,108 @@ async def setrisktype_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        f"⚙️ Configure Risk Type\n\n"
-        f"Current type: {settings['risk_type']}\n"
-        f"Current value: {settings['risk_value']}\n\n"
-        f"Select new risk type:",
+        f"⚙️ Risk Configuration\n\n"
+        f"Current settings:\n"
+        f"Type: {settings['risk_type']}\n"
+        f"Value: {current_value_display}\n\n"
+        f"Select risk type:",
         reply_markup=reply_markup
     )
 
-    return RISKTYPE_SELECT
+    return RISKTYPE_TYPE
 
 
-async def save_risktype(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save risk type setting"""
-    from database.db_manager import DatabaseManager
-
+async def ask_risktype_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ask for risk value based on selected type"""
     query = update.callback_query
     await query.answer()
 
     risk_type = query.data.replace("risktype_", "")
+    context.user_data['risk_type'] = risk_type
 
-    telegram_id = update.effective_user.id
-    db = DatabaseManager()
-    db.connect()
-
-    user = db.get_user_by_telegram_id(telegram_id)
-    settings = db.get_user_settings(user['id'])
-
-    # Update risk type only (keep existing value)
-    db.update_user_settings(
-        user_id=user['id'],
-        risk_type=risk_type
-    )
-
-    db.close()
-
-    type_label = "Fixed USD" if risk_type == "fixed_usd" else "Percent of Balance"
-
-    # Format value display correctly
-    old_risk_type = settings['risk_type']
-    old_risk_value = settings['risk_value']
-
-    if old_risk_type == "fixed_usd":
-        value_display = f"${old_risk_value}"
+    if risk_type == "fixed_usd":
+        await query.edit_message_text(
+            f"Risk Type: Fixed USD\n\n"
+            f"Enter risk amount in USD (e.g., 100):"
+        )
     else:  # percent
-        # Convert from decimal to percentage (0.01 -> 1%)
-        value_display = f"{old_risk_value * 100}%"
+        await query.edit_message_text(
+            f"Risk Type: Percent of Balance\n\n"
+            f"Enter risk percentage (e.g., 1 for 1%, 0.5 for 0.5%):"
+        )
 
-    await query.edit_message_text(
-        f"✅ Risk type updated!\n\n"
-        f"Type: {type_label}\n"
-        f"Value: {value_display} (unchanged)\n\n"
-        f"Use /setrisk to change both type and value."
-    )
+    return RISKTYPE_VALUE
 
-    return ConversationHandler.END
+
+async def save_risktype_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Save risk type and value settings"""
+    from database.db_manager import DatabaseManager
+
+    try:
+        risk_value = float(update.message.text)
+
+        if risk_value <= 0:
+            await update.message.reply_text(
+                "❌ Risk value must be positive.\n\n"
+                "Try again:"
+            )
+            return RISKTYPE_VALUE
+
+        risk_type = context.user_data['risk_type']
+
+        # Validate percent range
+        if risk_type == "percent" and risk_value > 100:
+            await update.message.reply_text(
+                "❌ Percentage cannot exceed 100%.\n\n"
+                "Try again:"
+            )
+            return RISKTYPE_VALUE
+
+        # Convert percent to decimal if needed
+        if risk_type == "percent":
+            risk_value_display = risk_value
+            risk_value = risk_value / 100.0  # Store as decimal (e.g., 0.01 for 1%)
+        else:
+            risk_value_display = risk_value
+
+        telegram_id = update.effective_user.id
+        db = DatabaseManager()
+        db.connect()
+
+        user = db.get_user_by_telegram_id(telegram_id)
+
+        # Update settings
+        db.update_user_settings(
+            user_id=user['id'],
+            risk_type=risk_type,
+            risk_value=risk_value
+        )
+
+        db.close()
+
+        if risk_type == "fixed_usd":
+            await update.message.reply_text(
+                f"✅ Risk settings saved!\n\n"
+                f"Type: Fixed USD\n"
+                f"Amount: ${risk_value_display}\n\n"
+                f"Every trade will risk ${risk_value_display} USD"
+            )
+        else:
+            await update.message.reply_text(
+                f"✅ Risk settings saved!\n\n"
+                f"Type: Percent of Balance\n"
+                f"Percentage: {risk_value_display}%\n\n"
+                f"Every trade will risk {risk_value_display}% of your account balance"
+            )
+
+        return ConversationHandler.END
+
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Invalid number.\n\n"
+            "Try again:"
+        )
+        return RISKTYPE_VALUE
 
 
 def get_setrisktype_handler():
@@ -561,7 +466,8 @@ def get_setrisktype_handler():
     return ConversationHandler(
         entry_points=[CommandHandler("setrisktype", setrisktype_start)],
         states={
-            RISKTYPE_SELECT: [CallbackQueryHandler(save_risktype, pattern="^risktype_(fixed_usd|percent)$")]
+            RISKTYPE_TYPE: [CallbackQueryHandler(ask_risktype_value, pattern="^risktype_(fixed_usd|percent)$")],
+            RISKTYPE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_risktype_settings)]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)]
     )
