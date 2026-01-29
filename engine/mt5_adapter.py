@@ -282,7 +282,7 @@ class MT5Adapter:
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
-
+        print(f"Order Request: {request}")
         # Send order
         result = mt5.order_send(request)
 
