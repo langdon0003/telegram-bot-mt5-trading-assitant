@@ -298,7 +298,7 @@ class TestSetRiskTypeFlow:
             update.message.reply_text.assert_called_once()
             call_args = update.message.reply_text.call_args[0][0]
             assert "✅ Risk settings saved!" in call_args
-            assert "1%" in call_args
+            assert "1.0%" in call_args  # Python formats as 1.0, not 1
 
     @pytest.mark.asyncio
     async def test_setrisktype_percent_half_percent(self):
