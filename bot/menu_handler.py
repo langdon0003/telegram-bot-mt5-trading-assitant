@@ -37,13 +37,22 @@ async def safe_edit_message(query, text, reply_markup=None, parse_mode='Markdown
             parse_mode=parse_mode
         )
     except BadRequest as e:
-        logger.warning(f"Failed to edit message: {e}. Sending new message instead.")
-        # If edit fails, send a new message
-        await query.message.reply_text(
-            text,
-            reply_markup=reply_markup,
-            parse_mode=parse_mode
-        )
+        # Only send new message if it's a message_id_invalid or message_not_modified error
+        error_str = str(e).lower()
+        if 'message_id_invalid' in error_str or 'message is not modified' in error_str:
+            logger.warning(f"Failed to edit message ({e}). Sending new message instead.")
+            try:
+                await query.message.reply_text(
+                    text,
+                    reply_markup=reply_markup,
+                    parse_mode=parse_mode
+                )
+            except Exception as send_error:
+                logger.error(f"Failed to send fallback message: {send_error}")
+        else:
+            # For other BadRequest errors, just log and don't send new message
+            logger.error(f"BadRequest error when editing message: {e}")
+            raise
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, is_new_user: bool = False):

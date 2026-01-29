@@ -162,18 +162,22 @@ class TradingBot:
 
         if isinstance(error, RetryAfter):
             retry_after = error.retry_after
-            logger.warning(f"⚠️ Rate limited by Telegram. Retry after {retry_after}s")
-            # Bot will automatically retry after the specified time
+            logger.warning(f"⚠️ RATE LIMITED by Telegram. Must wait {retry_after}s before next request")
+            logger.warning(f"   Update that caused rate limit: {update}")
+            # Don't send message - will make rate limiting worse
+            # User should wait before sending more commands
             return
 
         if isinstance(error, BadRequest):
             logger.warning(f"⚠️ Bad request error: {error}")
-            # Don't notify user - these are handled in menu_handler
+            logger.debug(f"   Update: {update}")
+            # These errors are usually handled gracefully in menu_handler
             return
 
         if isinstance(error, NetworkError):
             logger.warning(f"⚠️ Network error: {error}")
-            # Don't notify user - transient network issues
+            logger.debug(f"   Update: {update}")
+            # Transient network issues, will be retried automatically
             return
 
         # For other errors, try to notify the user if we have an update with message
