@@ -821,16 +821,13 @@ class TradingBot:
 
         await update.message.reply_text(
             f"📋 Final Confirmation\n\n"
-            f"Symbol: {context.user_data['symbol']}\n"
-            f"Type: {context.user_data['order_type']}\n"
-            f"Entry: {context.user_data['entry']}\n"
+            f"{context.user_data['order_type']}: {context.user_data['symbol']}\n"
+            f"ET: {context.user_data['entry']}\n"
             f"SL: {context.user_data['sl']}\n"
             f"TP: {context.user_data['tp']}\n"
             f"Volume: {context.user_data['volume']} lots\n"
-            f"Risk: ${context.user_data['risk_usd']}\n"
-            f"R:R: {context.user_data['rr']}\n"
-            f"Emotion: {context.user_data['emotion']}\n"
-            f"Setup: {context.user_data['setup_code']}\n"
+            f"Risk: ${context.user_data['risk_usd']} | R:R: {context.user_data['rr']}"
+            f"Emotion: {context.user_data['emotion']} | Setup: {context.user_data['setup_code']}\n"
             f"Chart: {chart_url or 'None'}\n\n"
             f"Execute this trade?",
             reply_markup=reply_markup
