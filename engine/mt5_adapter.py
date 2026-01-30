@@ -486,7 +486,6 @@ class MT5Adapter:
                 'tp': position.tp,
                 'profit': position.profit,
                 'swap': position.swap,
-                'commission': position.commission,
                 'time': position.time,
                 'comment': position.comment,
                 'magic': position.magic
@@ -532,7 +531,6 @@ class MT5Adapter:
             'tp': position.tp,
             'profit': position.profit,
             'swap': position.swap,
-            'commission': position.commission,
             'time': position.time,
             'comment': position.comment,
             'magic': position.magic,
