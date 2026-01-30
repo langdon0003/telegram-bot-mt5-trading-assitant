@@ -81,6 +81,7 @@ class TestModifyOrderStart:
         update.effective_user.id = 12345
         update.message = MagicMock(spec=Message)
         update.message.reply_text = AsyncMock()
+        update.callback_query = None  # This is a message command, not a callback
 
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.args = ['111']  # Ticket number provided
