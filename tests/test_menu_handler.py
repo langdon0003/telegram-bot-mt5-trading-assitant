@@ -63,14 +63,15 @@ class TestShowMainMenu:
         assert keyboard[0][0].text == "📊 Place Order"
         assert keyboard[0][0].callback_data == "menu_place_order"
 
-        # Row 2: View Orders, Settings
+        # Row 2: View Orders, Positions
         assert len(keyboard[1]) == 2
         assert keyboard[1][0].text == "📋 View Orders"
-        assert keyboard[1][1].text == "⚙️ Settings"
+        assert keyboard[1][1].text == "💼 Positions"
 
-        # Row 3: More Commands
-        assert len(keyboard[2]) == 1
-        assert keyboard[2][0].text == "🔧 More Commands"
+        # Row 3: Settings, More Commands
+        assert len(keyboard[2]) == 2
+        assert keyboard[2][0].text == "⚙️ Settings"
+        assert keyboard[2][1].text == "🔧 More Commands"
 
     @pytest.mark.asyncio
     async def test_show_menu_from_callback(self):

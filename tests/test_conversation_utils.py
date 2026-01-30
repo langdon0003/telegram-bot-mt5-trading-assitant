@@ -119,26 +119,26 @@ class TestCancelAndProcessNewCommand:
         assert "/settings" in call_args
 
     @pytest.mark.asyncio
-    async def test_cancel_and_process_logs_command_switch(self):
+    async def test_cancel_and_process_returns_end(self):
         """
         GIVEN: User switches from one command to another
         WHEN: cancel_and_process_new_command is called
-        THEN: Should log the command switch
+        THEN: Should return ConversationHandler.END
         """
         from bot.conversation_utils import cancel_and_process_new_command
-        import logging
 
-        # Capture logs
-        with pytest.LogCaptureFixture.captureLogRecords() as logs:
-            update = MagicMock(spec=Update)
-            update.message = MagicMock(spec=Message)
-            update.message.text = "/orders"
-            update.message.reply_text = AsyncMock()
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "/orders"
+        update.message.reply_text = AsyncMock()
 
-            context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
-            context.user_data = {}
+        context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
+        context.user_data = {'some_key': 'some_value'}
 
-            await cancel_and_process_new_command(update, context)
+        result = await cancel_and_process_new_command(update, context)
 
-            # Note: This test may not work without proper log capture
-            # Keeping for documentation purposes
+        # Verify returns END
+        assert result == ConversationHandler.END
+
+        # Verify user_data cleared
+        assert len(context.user_data) == 0

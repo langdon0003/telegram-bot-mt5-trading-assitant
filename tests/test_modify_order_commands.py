@@ -45,7 +45,7 @@ class TestModifyOrderStart:
         ]
         context.bot_data = {'mt5_adapter': mt5_adapter}
 
-        with patch('database.db_manager.DatabaseManager') as MockDB:
+        with patch('bot.modify_order_commands.DatabaseManager') as MockDB:
             mock_db = MockDB.return_value
             mock_db.get_user_by_telegram_id.return_value = {'id': 1}
 
@@ -99,7 +99,7 @@ class TestModifyOrderStart:
         }
         context.bot_data = {'mt5_adapter': mt5_adapter}
 
-        with patch('database.db_manager.DatabaseManager') as MockDB:
+        with patch('bot.modify_order_commands.DatabaseManager') as MockDB:
             mock_db = MockDB.return_value
             mock_db.get_user_by_telegram_id.return_value = {'id': 1}
 
@@ -146,7 +146,7 @@ class TestModifyOrderStart:
 
         context.bot_data = {'mt5_adapter': MagicMock(connected=True)}
 
-        with patch('database.db_manager.DatabaseManager') as MockDB:
+        with patch('bot.modify_order_commands.DatabaseManager') as MockDB:
             mock_db = MockDB.return_value
             mock_db.get_user_by_telegram_id.return_value = {'id': 1}
 
@@ -183,7 +183,7 @@ class TestModifyOrderStart:
         mt5_adapter.connected = False
         context.bot_data = {'mt5_adapter': mt5_adapter}
 
-        with patch('database.db_manager.DatabaseManager') as MockDB:
+        with patch('bot.modify_order_commands.DatabaseManager') as MockDB:
             mock_db = MockDB.return_value
             mock_db.get_user_by_telegram_id.return_value = {'id': 1}
 
@@ -219,7 +219,15 @@ class TestReceiveModificationValues:
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
         context.user_data = {
             'modify_field': 'entry',
-            'modify_order': {'sl': 2048.00}
+            'modify_ticket': 111,
+            'modify_order': {
+                'ticket': 111,
+                'symbol': 'XAUUSD',
+                'type': 'BUY LIMIT',
+                'price_open': 2050.50,
+                'sl': 2048.00,
+                'tp': 2055.00
+            }
         }
 
         result = await receive_entry(update, context)
