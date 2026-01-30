@@ -796,7 +796,7 @@ class TradingBot:
 
         await query.edit_message_text(
             f"Setup: {setup_code}\n\n"
-            f"Enter TradingView chart URL (or type 'skip'):"
+            f"Enter TV chart URL (or type 'skip'):"
         )
 
         return CHART_URL
@@ -826,7 +826,7 @@ class TradingBot:
             f"SL: {context.user_data['sl']}\n"
             f"TP: {context.user_data['tp']}\n"
             f"Volume: {context.user_data['volume']} lots\n"
-            f"Risk: ${context.user_data['risk_usd']} | R:R: {context.user_data['rr']}"
+            f"Risk: ${context.user_data['risk_usd']} | R:R: {context.user_data['rr']}\n"
             f"Emotion: {context.user_data['emotion']} | Setup: {context.user_data['setup_code']}\n"
             f"Chart: {chart_url or 'None'}\n\n"
             f"Execute this trade?",

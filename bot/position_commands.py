@@ -58,7 +58,7 @@ async def positions_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
         f"💼 *Open Positions* ({len(positions)})\n\n"
         f"Total P&L: {total_profit:+.2f} USD\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"━━━━━━━\n\n"
     )
 
     # Create keyboard with close buttons
@@ -128,7 +128,7 @@ async def handle_position_action(update: Update, context: ContextTypes.DEFAULT_T
         message = (
             f"💼 *Open Positions* ({len(positions)})\n\n"
             f"Total P&L: {total_profit:+.2f} USD\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"━━━━━━━\n\n"
         )
 
         keyboard = []
