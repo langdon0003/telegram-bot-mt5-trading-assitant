@@ -285,7 +285,7 @@ class TradingBot:
         app.add_handler(CommandHandler("orderdetail", orderdetail_command))
         app.add_handler(CommandHandler("closeorder", closeorder_command))
         app.add_handler(get_modifyorder_handler())
-        app.add_handler(CallbackQueryHandler(handle_order_action, pattern="^(close_order_|refresh_order_|confirm_close_|cancel_order_action|cancel_close)"))
+        app.add_handler(CallbackQueryHandler(handle_order_action, pattern="^(close_order_|refresh_order_|confirm_close_order_|cancel_order_action|cancel_close_order)"))
 
         # Position management
         app.add_handler(CommandHandler("positions", positions_command))

@@ -235,8 +235,8 @@ async def closeorder_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
     keyboard = [
-        [InlineKeyboardButton("✅ Yes, Close", callback_data=f"confirm_close_{ticket}")],
-        [InlineKeyboardButton("❌ Cancel", callback_data="cancel_close")]
+        [InlineKeyboardButton("✅ Yes, Close", callback_data=f"confirm_close_order_{ticket}")],
+        [InlineKeyboardButton("❌ Cancel", callback_data="cancel_close_order")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -258,7 +258,7 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return ConversationHandler.END
 
     # Cancel actions
-    if data in ("cancel_order_action", "cancel_close"):
+    if data in ("cancel_order_action", "cancel_close_order"):
         await query.edit_message_text("❌ Action cancelled")
         return ConversationHandler.END
 
@@ -338,8 +338,8 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
 
         keyboard = [
-            [InlineKeyboardButton("✅ Yes, Close", callback_data=f"confirm_close_{ticket}")],
-            [InlineKeyboardButton("❌ Cancel", callback_data="cancel_close")]
+            [InlineKeyboardButton("✅ Yes, Close", callback_data=f"confirm_close_order_{ticket}")],
+            [InlineKeyboardButton("❌ Cancel", callback_data="cancel_close_order")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -347,8 +347,8 @@ async def handle_order_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return ConversationHandler.END
 
     # Confirm close
-    if data.startswith("confirm_close_"):
-        ticket = int(data.replace("confirm_close_", ""))
+    if data.startswith("confirm_close_order_"):
+        ticket = int(data.replace("confirm_close_order_", ""))
 
         # Close the order
         result = adapter.close_pending_order(ticket)
